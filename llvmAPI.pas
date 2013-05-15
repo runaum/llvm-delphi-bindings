@@ -541,9 +541,9 @@ typedef enum {
     LLVMGhostLinkage,       // Obsolete 
     LLVMCommonLinkage,      // Tentative definitions 
     LLVMLinkerPrivateLinkage, // Like Private, but linker removes. 
-    LLVMLinkerPrivateWeakLinkage, // Like LinkerPrivate, but is weak. 
+    LLVMLinkerPrivateWeakLinkage // Like LinkerPrivate, but is weak.
 {$IFDEF LLVM_31}
-    LLVMLinkerPrivateWeakDefAutoLinkage // Like LinkerPrivateWeak, but possibly hidden. 
+    ,LLVMLinkerPrivateWeakDefAutoLinkage // Like LinkerPrivateWeak, but possibly hidden.
 {$ENDIF}
   );
 
@@ -5931,9 +5931,9 @@ type
     See the method llvm::DataLayout::getPointerSize. *)
   //unsigned LLVMPointerSizeForAS(LLVMTargetDataRef, unsigned AS);
 {$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMPointerSizeForAS = function(Unknown: LLVMTargetDataRef; AS: Cardinal): Cardinal; cdecl;
+  TLLVMPointerSizeForAS = function(Unknown: LLVMTargetDataRef; AS_: Cardinal): Cardinal; cdecl;
 {$ELSE}
-  function LLVMPointerSizeForAS(Unknown: LLVMTargetDataRef; AS: Cardinal): Cardinal; cdecl; external LLVMLibrary name 'LLVMPointerSizeForAS';
+  function LLVMPointerSizeForAS(Unknown: LLVMTargetDataRef; AS_: Cardinal): Cardinal; cdecl; external LLVMLibrary name 'LLVMPointerSizeForAS';
 {$ENDIF}
 {$ENDIF}
 
@@ -5952,9 +5952,9 @@ type
     See the method llvm::DataLayout::getIntPtrType. *)
   //LLVMTypeRef LLVMIntPtrTypeForAS(LLVMTargetDataRef, unsigned AS);
 {$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMIntPtrTypeForAS = function(Unknown: LLVMTargetDataRef; AS: Cardinal): LLVMTypeRef; cdecl;
+  TLLVMIntPtrTypeForAS = function(Unknown: LLVMTargetDataRef; AS_: Cardinal): LLVMTypeRef; cdecl;
 {$ELSE}
-  function LLVMIntPtrTypeForAS(Unknown: LLVMTargetDataRef; AS: Cardinal): LLVMTypeRef	; cdecl; external LLVMLibrary name 'LLVMIntPtrTypeForAS';
+  function LLVMIntPtrTypeForAS(Unknown: LLVMTargetDataRef; AS_: Cardinal): LLVMTypeRef	; cdecl; external LLVMLibrary name 'LLVMIntPtrTypeForAS';
 {$ENDIF}
 {$ENDIF}
 
