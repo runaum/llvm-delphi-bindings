@@ -1,7 +1,7 @@
 llvm-delphi-bindings
 ====================
 
-Delphi LLVM-C Bindings
+Delphi/FPC LLVM-C Bindings
 
 License: BSD
 
