@@ -2,12 +2,10 @@
     LLVM API for Delphi
       > Author: Aleksey A. Naumov [alexey.naumov@gmail.com]
       > License: BSD
-      > Delphi API Version: 0.4a
-      > LLVM C API Version: 3.1, 3.2 Official Releases
-	    Always supported two last releases (next are 3.3, 3.2)
+      > Delphi API Version: 0.3c
+      > LLVM C API Version: 3.1 Official Release
 
     Tested on Windows only & D2007, DXE2, FPC 2.6.
-	Sorry for my primitive English.
 *)
 unit llvmAPI;
 
@@ -16,9 +14,6 @@ unit llvmAPI;
     {$DEFINE CPUX64}
   {$ENDIF}
 {$ENDIF}
-
-{.$DEFINE LLVM_31}                             // LLVM Version 3.1
-{$DEFINE LLVM_32}                             // LLVM Version 3.2
 
 {$DEFINE LLVM_DEBUG}                          // Only for debug w/ vLogs
 {.$DEFINE LLVM_TRACE}                          // Only for trace w/ vLogs
@@ -33,7 +28,6 @@ unit llvmAPI;
 {.$DEFINE LLVM_API_ENHANCEDDISASSEMBLY}        // EnhancedDisassembly.h
 {$DEFINE LLVM_API_EXECUTIONENGINE}            // ExecutionEngine.h
 {.$DEFINE LLVM_API_INITIALIZATION}             // Initialization.h
-{$DEFINE LLVM_API_LINKER}                     // Linker.h
 {.$DEFINE LLVM_API_LINKTIMEOPTIMIZER}          // LinkTimeOptimizer.h
 {.$DEFINE LLVM_API_LTO}                        // lto.h
 {$DEFINE LLVM_API_OBJECT}                     // Object.h
@@ -58,21 +52,14 @@ uses
 
 // Internals & workarounds
 const
-{$IFDEF LLVM_31}
   LLVMVersion = '3.1';
-  LLVMVersionMajor = 3;
-  LLVMVersionMinor = 1;
-{$ENDIF}
-{$IFDEF LLVM_32}
-  LLVMVersion = '3.2';
-  LLVMVersionMajor = 3;
-  LLVMVersionMinor = 2;
-{$ENDIF}
 {$IFNDEF CPUX64}
   LLVMArch = 'x86';
 {$ELSE}
   LLVMArch = 'x86_64';
 {$ENDIF}
+  LLVMVersionMajor = 3;
+  LLVMVersionMinor = 1;
 {$IFDEF MSWINDOWS}
   LLVMLibraryExt = '.dll';
 {$ENDIF}
@@ -113,7 +100,7 @@ type
  * The declared parameter names are descriptive and specify which type is
  * required. Additionally, each type hierarchy is documented along with the
  * functions that operate upon it. For more detail, refer to LLVM's C++ code.
- * If in doubt, refer to Core.cpp, which performs parameter downcasts in the
+ * If in doubt, refer to Core.cpp, which performs paramter downcasts in the
  * form unwrap<RequiredType>(Param).
  *
  * Many exotic languages can interoperate with C code but have a harder time
@@ -175,7 +162,7 @@ type
   LLVMValueRef = ^LLVMOpaqueValue;
 
 (*
- * Represents a basic block of instructions in LLVM IR.
+ * Represents a basic block of instruction in LLVM IR.
  *
  * This models llvm::BasicBlock.
  *)
@@ -505,12 +492,14 @@ typedef enum {
   LLVMExternalLinkage,    // Externally visible function 
   LLVMAvailableExternallyLinkage,
   LLVMLinkOnceAnyLinkage, // Keep one copy of function when linking (inline)
-  LLVMLinkOnceODRLinkage, // Same, but only replaced by something equivalent. 
-  LLVMLinkOnceODRAutoHideLinkage, // Like LinkOnceODR, but possibly hidden. <- 3.2 introduced
+  LLVMLinkOnceODRLinkage, // Same, but only replaced by something
+                            equivalent. 
   LLVMWeakAnyLinkage,     // Keep one copy of function when linking (weak) 
-  LLVMWeakODRLinkage,     // Same, but only replaced by something equivalent. 
+  LLVMWeakODRLinkage,     // Same, but only replaced by something
+                            equivalent. 
   LLVMAppendingLinkage,   // Special purpose, only applies to global arrays 
-  LLVMInternalLinkage,    // Rename collisions when linking (static functions) 
+  LLVMInternalLinkage,    // Rename collisions when linking (static
+                               functions) 
   LLVMPrivateLinkage,     // Like Internal, but omit from symbol table 
   LLVMDLLImportLinkage,   // Function to be imported from DLL 
   LLVMDLLExportLinkage,   // Function to be accessible from DLL 
@@ -519,7 +508,8 @@ typedef enum {
   LLVMCommonLinkage,      // Tentative definitions 
   LLVMLinkerPrivateLinkage, // Like Private, but linker removes. 
   LLVMLinkerPrivateWeakLinkage, // Like LinkerPrivate, but is weak. 
-  LLVMLinkerPrivateWeakDefAutoLinkage // Like LinkerPrivateWeak, but possibly hidden. <- 3.1 only 
+  LLVMLinkerPrivateWeakDefAutoLinkage // Like LinkerPrivateWeak, but possibly
+                                           hidden. 
 } LLVMLinkage;
 *)
   LLVMLinkage = (
@@ -527,9 +517,6 @@ typedef enum {
     LLVMAvailableExternallyLinkage,
     LLVMLinkOnceAnyLinkage, // Keep one copy of function when linking (inline)
     LLVMLinkOnceODRLinkage, // Same, but only replaced by something equivalent. 
-{$IFDEF LLVM_32}
-    LLVMLinkOnceODRAutoHideLinkage, // Like LinkOnceODR, but possibly hidden. 
-{$ENDIF}
     LLVMWeakAnyLinkage,     // Keep one copy of function when linking (weak) 
     LLVMWeakODRLinkage,     // Same, but only replaced by something equivalent. 
     LLVMAppendingLinkage,   // Special purpose, only applies to global arrays 
@@ -542,9 +529,7 @@ typedef enum {
     LLVMCommonLinkage,      // Tentative definitions 
     LLVMLinkerPrivateLinkage, // Like Private, but linker removes. 
     LLVMLinkerPrivateWeakLinkage, // Like LinkerPrivate, but is weak. 
-{$IFDEF LLVM_31}
     LLVMLinkerPrivateWeakDefAutoLinkage // Like LinkerPrivateWeak, but possibly hidden. 
-{$ENDIF}
   );
 
 (*
@@ -851,21 +836,6 @@ typedef enum {
   TLLVMDumpModule = procedure(M: LLVMModuleRef); cdecl;
 {$ELSE}
   procedure LLVMDumpModule(M: LLVMModuleRef); cdecl; external LLVMLibrary name 'LLVMDumpModule';
-{$ENDIF}
-
-{$IFDEF LLVM_32}
-(*
- * Print a representation of a module to a file. The ErrorMessage needs to be
- * disposed with LLVMDisposeMessage. Returns 0 on success, 1 otherwise.
- *
- * @see Module::print()
- *)
-  //LLVMBool LLVMPrintModuleToFile(LLVMModuleRef M, const char *Filename, char **ErrorMessage);
-{$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMPrintModuleToFile = function(M: LLVMModuleRef; Filename: PAnsiChar; var ErrorMessage: PAnsiChar): LLVMBool; cdecl;
-{$ELSE}
-  function LLVMPrintModuleToFile(M: LLVMModuleRef; Filename: PAnsiChar; var ErrorMessage: PAnsiChar): LLVMBool; cdecl; external LLVMLibrary name 'LLVMPrintModuleToFile';
-{$ENDIF}
 {$ENDIF}
 
 (*
@@ -1702,7 +1672,7 @@ typedef enum {
  *
  * LLVMValueRef essentially represents llvm::Value. There is a rich
  * hierarchy of classes within this type. Depending on the instance
- * obtained, not all APIs are available.
+ * obtain, not all APIs are available.
  *
  * Callers can determine the type of a LLVMValueRef by calling the
  * LLVMIsA* family of functions (e.g. LLVMIsAArgument()). These
@@ -2260,7 +2230,7 @@ typedef enum {
  *
  * Uses are obtained in an iterator fashion. First, call this function
  * to obtain a reference to the first use. Then, call LLVMGetNextUse()
- * on that instance and all subsequently obtained instances until
+ * on that instance and all subsequently obtained instances untl
  * LLVMGetNextUse() returns NULL.
  *
  * @see llvm::Value::use_begin()
@@ -3582,7 +3552,7 @@ typedef enum {
  * Set the alignment for a function parameter.
  *
  * @see llvm::Argument::addAttr()
- * @see llvm::AttrBuilder::addAlignmentAttr()
+ * @see llvm::Attribute::constructAlignmentFromInt()
  *)
   //void LLVMSetParamAlignment(LLVMValueRef Arg, unsigned align);
 {$IFDEF LLVM_DYNAMIC_LINK}
@@ -3675,41 +3645,6 @@ typedef enum {
   TLLVMGetMDString = function(V: LLVMValueRef; Len: PCardinal): PAnsiChar; cdecl;
 {$ELSE}
   function LLVMGetMDString(V: LLVMValueRef; Len: PCardinal): PAnsiChar; cdecl; external LLVMLibrary name 'LLVMGetMDString';
-{$ENDIF}
-
-{$IFDEF LLVM_32}
-(*
- * Obtain the number of operands from an MDNode value.
- *
- * @param V MDNode to get number of operands from.
- * @return Number of operands of the MDNode.
- *)
-  //unsigned LLVMGetMDNodeNumOperands(LLVMValueRef V);
-{$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMGetMDNodeNumOperands = function(V: LLVMValueRef): Cardinal; cdecl;
-{$ELSE}
-  function LLVMGetMDNodeNumOperands(V: LLVMValueRef): Cardinal; cdecl; external LLVMLibrary name 'LLVMGetMDNodeNumOperands';
-{$ENDIF}
-{$ENDIF}
-
-{$IFDEF LLVM_32}
-(*
- * Obtain the given MDNode's operands.
- *
- * The passed LLVMValueRef pointer should point to enough memory to hold all of
- * the operands of the given MDNode (see LLVMGetMDNodeNumOperands) as
- * LLVMValueRefs. This memory will be populated with the LLVMValueRefs of the
- * MDNode's operands.
- *
- * @param V MDNode to get the operands from.
- * @param Dest Destination array for operands.
- *)
-  //void LLVMGetMDNodeOperands(LLVMValueRef V, LLVMValueRef *Dest);
-{$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMGetMDNodeOperands = procedure(V: LLVMValueRef; var Dest: LLVMValueRef); cdecl;
-{$ELSE}
-  procedure LLVMGetMDNodeOperands(V: LLVMValueRef; var Dest: LLVMValueRef); cdecl; external LLVMLibrary name 'LLVMGetMDNodeOperands';
-{$ENDIF}
 {$ENDIF}
 
 (*
@@ -4094,7 +4029,7 @@ typedef enum {
 {$ENDIF}
 
 (*
- * Obtain the instruction that occurred before this one.
+ * Obtain the instruction that occured before this one.
  *
  * If the instruction is the first instruction in a basic block, NULL
  * will be returned.
@@ -5585,40 +5520,6 @@ typedef enum {
 
 {$ENDIF}
 //*------------------------------------------------- END of Initialization.h -------------------------------------------------*//
-
-
-//*================================================= START of Linker.h =================================================*//
-{$IFDEF LLVM_32}
-{$IFDEF LLVM_API_LINKER}
-
-type
-(*
-typedef enum {
-  LLVMLinkerDestroySource = 0, /* Allow source module to be destroyed. */
-  LLVMLinkerPreserveSource = 1 /* Preserve the source module. */
-} LLVMLinkerMode;
-*)
-  LLVMLinkerMode =
-  (
-    LLVMLinkerDestroySource = 0, // Allow source module to be destroyed.
-    LLVMLinkerPreserveSource = 1 // Preserve the source module.
-  );
-
-(* Links the source module into the destination module, taking ownership
- * of the source module away from the caller. Optionally returns a
- * human-readable description of any errors that occurred in linking.
- * OutMessage must be disposed with LLVMDisposeMessage. The return value
- * is true if an error occurred, false otherwise. *)
-  //LLVMBool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src, LLVMLinkerMode Mode, char **OutMessage);
-{$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMLinkModules = function(Dest: LLVMModuleRef; Src: LLVMModuleRef; Mode: LLVMLinkerMode; var OutMessage: PAnsiChar): LLVMBool; cdecl; 
-{$ELSE}
-  function LLVMLinkModules(Dest: LLVMModuleRef; Src: LLVMModuleRef; Mode: LLVMLinkerMode; var OutMessage: PAnsiChar): LLVMBool; cdecl;  external LLVMLibrary name 'LLVMLinkModules';
-{$ENDIF}
-
-{$ENDIF}
-{$ENDIF}
-//*------------------------------------------------- END of Linker.h -------------------------------------------------*//
   
   
 //*================================================= START of LinkTimeOptimizer.h =================================================*//
@@ -5868,7 +5769,7 @@ type
 (*===-- Target Data -------------------------------------------------------===*)
 
 (** Creates target data from a target layout string.
-    See the constructor llvm::DataLayout::DataLayout. *)
+    See the constructor llvm::TargetData::TargetData. *)
   //LLVMTargetDataRef LLVMCreateTargetData(const char *StringRep);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMCreateTargetData = function(StringRep: PAnsiChar): LLVMTargetDataRef; cdecl;
@@ -5898,7 +5799,7 @@ type
 
 (** Converts target data to a target layout string. The string must be disposed
     with LLVMDisposeMessage.
-    See the constructor llvm::DataLayout::DataLayout. *)
+    See the constructor llvm::TargetData::TargetData. *)
   //char *LLVMCopyStringRepOfTargetData(LLVMTargetDataRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMCopyStringRepOfTargetData = function(Unknown: LLVMTargetDataRef): PAnsiChar; cdecl;
@@ -5908,7 +5809,7 @@ type
 
 (** Returns the byte order of a target, either LLVMBigEndian or
     LLVMLittleEndian.
-    See the method llvm::DataLayout::isLittleEndian. *)
+    See the method llvm::TargetData::isLittleEndian. *)
   //enum LLVMByteOrdering LLVMByteOrder(LLVMTargetDataRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMByteOrder = function(Unknown: LLVMTargetDataRef): LLVMByteOrdering; cdecl;
@@ -5917,7 +5818,7 @@ type
 {$ENDIF}
 
 (** Returns the pointer size in bytes for a target.
-    See the method llvm::DataLayout::getPointerSize. *)
+    See the method llvm::TargetData::getPointerSize. *)
   //unsigned LLVMPointerSize(LLVMTargetDataRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMPointerSize = function(Unknown: LLVMTargetDataRef): Cardinal; cdecl;
@@ -5925,20 +5826,8 @@ type
   function LLVMPointerSize(Unknown: LLVMTargetDataRef): Cardinal; cdecl; external LLVMLibrary name 'LLVMPointerSize';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
-(** Returns the pointer size in bytes for a target for a specified
-    address space.
-    See the method llvm::DataLayout::getPointerSize. *)
-  //unsigned LLVMPointerSizeForAS(LLVMTargetDataRef, unsigned AS);
-{$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMPointerSizeForAS = function(Unknown: LLVMTargetDataRef; AS: Cardinal): Cardinal; cdecl;
-{$ELSE}
-  function LLVMPointerSizeForAS(Unknown: LLVMTargetDataRef; AS: Cardinal): Cardinal; cdecl; external LLVMLibrary name 'LLVMPointerSizeForAS';
-{$ENDIF}
-{$ENDIF}
-
 (** Returns the integer type that is the same size as a pointer on a target.
-    See the method llvm::DataLayout::getIntPtrType. *)
+    See the method llvm::TargetData::getIntPtrType. *)
   //LLVMTypeRef LLVMIntPtrType(LLVMTargetDataRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMIntPtrType = function(Unknown: LLVMTargetDataRef): LLVMTypeRef; cdecl;
@@ -5946,20 +5835,8 @@ type
   function LLVMIntPtrType(Unknown: LLVMTargetDataRef): LLVMTypeRef; cdecl; external LLVMLibrary name 'LLVMIntPtrType';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
-(** Returns the integer type that is the same size as a pointer on a target.
-    This version allows the address space to be specified.
-    See the method llvm::DataLayout::getIntPtrType. *)
-  //LLVMTypeRef LLVMIntPtrTypeForAS(LLVMTargetDataRef, unsigned AS);
-{$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMIntPtrTypeForAS = function(Unknown: LLVMTargetDataRef; AS: Cardinal): LLVMTypeRef; cdecl;
-{$ELSE}
-  function LLVMIntPtrTypeForAS(Unknown: LLVMTargetDataRef; AS: Cardinal): LLVMTypeRef	; cdecl; external LLVMLibrary name 'LLVMIntPtrTypeForAS';
-{$ENDIF}
-{$ENDIF}
-
 (** Computes the size of a type in bytes for a target.
-    See the method llvm::DataLayout::getTypeSizeInBits. *)
+    See the method llvm::TargetData::getTypeSizeInBits. *)
   //unsigned long long LLVMSizeOfTypeInBits(LLVMTargetDataRef, LLVMTypeRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMSizeOfTypeInBits = function(Unknown: LLVMTargetDataRef; Unknown_: LLVMTypeRef): UInt64; cdecl;
@@ -5968,7 +5845,7 @@ type
 {$ENDIF}
 
 (** Computes the storage size of a type in bytes for a target.
-    See the method llvm::DataLayout::getTypeStoreSize. *)
+    See the method llvm::TargetData::getTypeStoreSize. *)
   //unsigned long long LLVMStoreSizeOfType(LLVMTargetDataRef, LLVMTypeRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMStoreSizeOfType = function(Unknown: LLVMTargetDataRef; Unknown_: LLVMTypeRef): UInt64; cdecl;
@@ -5977,7 +5854,7 @@ type
 {$ENDIF}
 
 (** Computes the ABI size of a type in bytes for a target.
-    See the method llvm::DataLayout::getTypeAllocSize. *)
+    See the method llvm::TargetData::getTypeAllocSize. *)
   //unsigned long long LLVMABISizeOfType(LLVMTargetDataRef, LLVMTypeRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMABISizeOfType = function(Unknown: LLVMTargetDataRef; Unknown_: LLVMTypeRef): UInt64; cdecl;
@@ -5986,7 +5863,7 @@ type
 {$ENDIF}
 
 (** Computes the ABI alignment of a type in bytes for a target.
-    See the method llvm::DataLayout::getTypeABISize. *)
+    See the method llvm::TargetData::getTypeABISize. *)
   //unsigned LLVMABIAlignmentOfType(LLVMTargetDataRef, LLVMTypeRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMABIAlignmentOfType = function(Unknown: LLVMTargetDataRef; Unknown_: LLVMTypeRef): Cardinal; cdecl;
@@ -5995,7 +5872,7 @@ type
 {$ENDIF}
 
 (** Computes the call frame alignment of a type in bytes for a target.
-    See the method llvm::DataLayout::getTypeABISize. *)
+    See the method llvm::TargetData::getTypeABISize. *)
   //unsigned LLVMCallFrameAlignmentOfType(LLVMTargetDataRef, LLVMTypeRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMCallFrameAlignmentOfType = function(Unknown: LLVMTargetDataRef; Unknown_: LLVMTypeRef): Cardinal; cdecl;
@@ -6004,7 +5881,7 @@ type
 {$ENDIF}
 
 (** Computes the preferred alignment of a type in bytes for a target.
-    See the method llvm::DataLayout::getTypeABISize. *)
+    See the method llvm::TargetData::getTypeABISize. *)
   //unsigned LLVMPreferredAlignmentOfType(LLVMTargetDataRef, LLVMTypeRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMPreferredAlignmentOfType = function(Unknown: LLVMTargetDataRef; Unknown_: LLVMTypeRef): Cardinal; cdecl;
@@ -6013,7 +5890,7 @@ type
 {$ENDIF}
 
 (** Computes the preferred alignment of a global variable in bytes for a target.
-    See the method llvm::DataLayout::getPreferredAlignment. *)
+    See the method llvm::TargetData::getPreferredAlignment. *)
   //unsigned LLVMPreferredAlignmentOfGlobal(LLVMTargetDataRef,
   //                                      LLVMValueRef GlobalVar);
 {$IFDEF LLVM_DYNAMIC_LINK}
@@ -6043,7 +5920,7 @@ type
 {$ENDIF}
 
 (** Deallocates a TargetData.
-    See the destructor llvm::DataLayout::~DataLayout. *)
+    See the destructor llvm::TargetData::~TargetData. *)
   //void LLVMDisposeTargetData(LLVMTargetDataRef);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMDisposeTargetData = procedure(Unknown: LLVMTargetDataRef); cdecl;
@@ -6053,15 +5930,15 @@ type
 
 (*
 namespace llvm {
-  class DataLayout;
+  class TargetData;
   class TargetLibraryInfo;
 
-  inline DataLayout *unwrap(LLVMTargetDataRef P) {
-    return reinterpret_cast<DataLayout*>(P);
+  inline TargetData *unwrap(LLVMTargetDataRef P) {
+    return reinterpret_cast<TargetData*>(P);
   }
   
-  inline LLVMTargetDataRef wrap(const DataLayout *P) {
-    return reinterpret_cast<LLVMTargetDataRef>(const_cast<DataLayout*>(P));
+  inline LLVMTargetDataRef wrap(const TargetData *P) {
+    return reinterpret_cast<LLVMTargetDataRef>(const_cast<TargetData*>(P));
   }
 
   inline TargetLibraryInfo *unwrap(LLVMTargetLibraryInfoRef P) {
@@ -6265,7 +6142,7 @@ typedef enum {
   function LLVMGetTargetMachineFeatureString(T: LLVMTargetMachineRef): PAnsiChar; cdecl; external LLVMLibrary name 'LLVMGetTargetMachineFeatureString';
 {$ENDIF}
 
-(* Returns the llvm::DataLayout used for this llvm:TargetMachine. *)
+(* Returns the llvm::TargetData used for this llvm:TargetMachine. *)
   //LLVMTargetDataRef LLVMGetTargetMachineData(LLVMTargetMachineRef T);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMGetTargetMachineData = function(T: LLVMTargetMachineRef): LLVMTargetDataRef; 
@@ -7040,26 +6917,6 @@ type
   TLLVMCreateDisasm = function(TripleName: PAnsiChar; DisInfo: Pointer; TagType: Integer; GetOpInfo: LLVMOpInfoCallback; SymbolLookUp: LLVMSymbolLookupCallback): LLVMDisasmContextRef; cdecl;
 {$ELSE}
   function LLVMCreateDisasm(TripleName: PAnsiChar; DisInfo: Pointer; TagType: Integer; GetOpInfo: LLVMOpInfoCallback; SymbolLookUp: LLVMSymbolLookupCallback): LLVMDisasmContextRef; cdecl; external LLVMLibrary name 'LLVMCreateDisasm';
-{$ENDIF}
-
-{$IFDEF LLVM_32}
-(*
- * Set the disassembler's options.  Returns 1 if it can set the Options and 0
- * otherwise.
- *)
-  //int LLVMSetDisasmOptions(LLVMDisasmContextRef DC, uint64_t Options);
-{$IFDEF LLVM_DYNAMIC_LINK}
-type
-  TLLVMSetDisasmOptions = function(DC: LLVMDisasmContextRef; Options: uint64_t): Integer; cdecl;
-{$ELSE}
-  function LLVMSetDisasmOptions(DC: LLVMDisasmContextRef; Options: uint64_t): Integer; cdecl; external LLVMLibrary name 'LLVMSetDisasmOptions';
-{$ENDIF}
-{$ENDIF}
-
-{$IFDEF LLVM_32}
-(* The option to produce marked up assembly. *)
-  //#define LLVMDisassembler_Option_UseMarkup 1
-  {$DEFINE LLVMDisassembler_Option_UseMarkup 1}
 {$ENDIF}
 
 (*
@@ -8728,16 +8585,6 @@ namespace llvm {
   procedure LLVMAddBBVectorizePass(PM: LLVMPassManagerRef); cdecl; external LLVMLibrary name 'LLVMAddBBVectorizePass';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
-  // See llvm::createLoopVectorizePass function.
-  //void LLVMAddLoopVectorizePass(LLVMPassManagerRef PM);
-{$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMAddLoopVectorizePass = procedure(PM: LLVMPassManagerRef); cdecl;
-{$ELSE}
-  procedure LLVMAddLoopVectorizePass(PM: LLVMPassManagerRef); cdecl; external LLVMLibrary name 'LLVMAddLoopVectorizePass';
-{$ENDIF}
-{$ENDIF}
-
 {$ENDIF}
 //*------------------------------------------------- END of Vectorize.h -------------------------------------------------*//
 
@@ -8759,9 +8606,6 @@ var
   LLVMGetTarget: TLLVMGetTarget;
   LLVMSetTarget: TLLVMSetTarget;
   LLVMDumpModule: TLLVMDumpModule;
-{$IFDEF LLVM_32}
-  LLVMPrintModuleToFile: TLLVMPrintModuleToFile;
-{$ENDIF}
   LLVMSetModuleInlineAsm: TLLVMSetModuleInlineAsm;
   LLVMGetModuleContext: TLLVMGetModuleContext;
   LLVMGetTypeByName: TLLVMGetTypeByName;
@@ -9047,10 +8891,6 @@ var
   LLVMMDNodeInContext: TLLVMMDNodeInContext;
   LLVMMDNode: TLLVMMDNode;
   LLVMGetMDString: TLLVMGetMDString;
-{$IFDEF LLVM_32}
-  LLVMGetMDNodeNumOperands: TLLVMGetMDNodeNumOperands;
-  LLVMGetMDNodeOperands: TLLVMGetMDNodeOperands;
-{$ENDIF}
   LLVMBasicBlockAsValue: TLLVMBasicBlockAsValue;
   LLVMValueIsBasicBlock: TLLVMValueIsBasicBlock;
   LLVMValueAsBasicBlock: TLLVMValueAsBasicBlock;
@@ -9247,9 +9087,6 @@ var
   LLVMInitializeCodeGen: TLLVMInitializeCodeGen;
   LLVMInitializeTarget: TLLVMInitializeTarget;
 {$ENDIF}
-{$IFDEF LLVM_API_LINKER}
-  LLVMLinkModules: TLLVMLinkModules;
-{$ENDIF}
 {$IFDEF LLVM_API_LINKTIMEOPTIMIZER}
   llvm_create_optimizer: Tllvm_create_optimizer;
   llvm_destroy_optimizer: Tllvm_destroy_optimizer;
@@ -9270,13 +9107,7 @@ var
   LLVMCopyStringRepOfTargetData: TLLVMCopyStringRepOfTargetData;
   LLVMByteOrder: TLLVMByteOrder;
   LLVMPointerSize: TLLVMPointerSize;
-{$IFDEF LLVM_32}
-  LLVMPointerSizeForAS: TLLVMPointerSizeForAS;
-{$ENDIF}
   LLVMIntPtrType: TLLVMIntPtrType;
-{$IFDEF LLVM_32}
-  LLVMIntPtrTypeForAS: TLLVMIntPtrTypeForAS;
-{$ENDIF}
   LLVMSizeOfTypeInBits: TLLVMSizeOfTypeInBits;
   LLVMStoreSizeOfType: TLLVMStoreSizeOfType;
   LLVMABISizeOfType: TLLVMABISizeOfType;
@@ -9372,9 +9203,6 @@ var
 {$ENDIF}
 {$IFDEF LLVM_API_DISASSEMBLER}
   LLVMCreateDisasm: TLLVMCreateDisasm;
-{$IFDEF LLVM_32}
-  LLVMSetDisasmOptions: TLLVMSetDisasmOptions;
-{$ENDIF}
   LLVMDisasmDispose: TLLVMDisasmDispose;
   LLVMDisasmInstruction: TLLVMDisasmInstruction;
 {$ENDIF}
@@ -9508,9 +9336,6 @@ var
 {$ENDIF}
 {$IFDEF LLVM_API_VECTORIZE}
   LLVMAddBBVectorizePass: TLLVMAddBBVectorizePass;
-{$IFDEF LLVM_32}
-  LLVMAddLoopVectorizePass: TLLVMAddLoopVectorizePass;
-{$ENDIF}
 {$ENDIF}
 
 var
@@ -9590,9 +9415,6 @@ begin
   @LLVMGetTarget := BindLLVMProc('LLVMGetTarget');
   @LLVMSetTarget := BindLLVMProc('LLVMSetTarget');
   @LLVMDumpModule := BindLLVMProc('LLVMDumpModule');
-{$IFDEF LLVM_32}
-  @LLVMPrintModuleToFile := BindLLVMProc('LLVMPrintModuleToFile');
-{$ENDIF}
   @LLVMSetModuleInlineAsm := BindLLVMProc('LLVMSetModuleInlineAsm');
   @LLVMGetModuleContext := BindLLVMProc('LLVMGetModuleContext');
   @LLVMGetTypeByName := BindLLVMProc('LLVMGetTypeByName');
@@ -9878,10 +9700,6 @@ begin
   @LLVMMDNodeInContext := BindLLVMProc('LLVMMDNodeInContext');
   @LLVMMDNode := BindLLVMProc('LLVMMDNode');
   @LLVMGetMDString := BindLLVMProc('LLVMGetMDString');
-{$IFDEF LLVM_32}
-  @LLVMGetMDNodeNumOperands := BindLLVMProc('LLVMGetMDNodeNumOperands');
-  @LLVMGetMDNodeOperands := BindLLVMProc('LLVMGetMDNodeOperands');
-{$ENDIF}
   @LLVMBasicBlockAsValue := BindLLVMProc('LLVMBasicBlockAsValue');
   @LLVMValueIsBasicBlock := BindLLVMProc('LLVMValueIsBasicBlock');
   @LLVMValueAsBasicBlock := BindLLVMProc('LLVMValueAsBasicBlock');
@@ -10087,11 +9905,6 @@ begin
   @LLVMInitializeTarget := BindLLVMProc('LLVMInitializeTarget');
   LLVMTraceLog('');
 {$ENDIF}
-{$IFDEF LLVM_API_LINKER}
-  LLVMTraceLog(';Linker.h');
-  @LLVMLinkModules := BindLLVMProc('LLVMLinkModules');
-  LLVMTraceLog('');
-{$ENDIF}
 {$IFDEF LLVM_API_LINKTIMEOPTIMIZER}
   LLVMTraceLog(';LinkTimeOptimizer.h');
   @llvm_create_optimizer := BindLLVMProc('llvm_create_optimizer');
@@ -10115,13 +9928,7 @@ begin
   @LLVMCopyStringRepOfTargetData := BindLLVMProc('LLVMCopyStringRepOfTargetData');
   @LLVMByteOrder := BindLLVMProc('LLVMByteOrder');
   @LLVMPointerSize := BindLLVMProc('LLVMPointerSize');
-{$IFDEF LLVM_32}
-  @LLVMPointerSizeForAS := BindLLVMProc('LLVMPointerSizeForAS');
-{$ENDIF}
   @LLVMIntPtrType := BindLLVMProc('LLVMIntPtrType');
-{$IFDEF LLVM_32}
-  @LLVMIntPtrTypeForAS := BindLLVMProc('LLVMIntPtrTypeForAS');
-{$ENDIF}
   @LLVMSizeOfTypeInBits := BindLLVMProc('LLVMSizeOfTypeInBits');
   @LLVMStoreSizeOfType := BindLLVMProc('LLVMStoreSizeOfType');
   @LLVMABISizeOfType := BindLLVMProc('LLVMABISizeOfType');
@@ -10225,9 +10032,6 @@ begin
 {$IFDEF LLVM_API_DISASSEMBLER}
   LLVMTraceLog('Disassembler.h');
   @LLVMCreateDisasm := BindLLVMProc('LLVMCreateDisasm');
-{$IFDEF LLVM_32}
-  @LLVMSetDisasmOptions := BindLLVMProc('LLVMSetDisasmOptions');
-{$ENDIF}
   @LLVMDisasmDispose := BindLLVMProc('LLVMDisasmDispose');
   @LLVMDisasmInstruction := BindLLVMProc('LLVMDisasmInstruction');
   LLVMTraceLog('');
@@ -10373,7 +10177,6 @@ begin
 {$IFDEF LLVM_API_VECTORIZE}
   LLVMTraceLog(';Vectorize.h');
   @LLVMAddBBVectorizePass := BindLLVMProc('LLVMAddBBVectorizePass');
-  @LLVMAddLoopVectorizePass := BindLLVMProc('LLVMAddLoopVectorizePass');
   LLVMTraceLog('');
 {$ENDIF}
   Result := BindResult;
