@@ -2,12 +2,12 @@
     LLVM API for Delphi
       > Author: Aleksey A. Naumov [alexey.naumov@gmail.com]
       > License: BSD
-      > Delphi API Version: 0.4a
-      > LLVM C API Version: 3.1, 3.2 Official Releases
-	    Always supported two last releases (next are 3.3, 3.2)
+      > Delphi API Version: 0.5a
+      > LLVM C API Version: 3.3, 3.2 Official Releases
+        Always supported two last releases (next are 3.4, 3.3)
 
-    Tested on Windows only & D2007, DXE2, FPC 2.6.
-	Sorry for my primitive English.
+    Tested on Windows only & D2007, DXE2-DXE4, FPC 2.6.
+    I'm sorry for my English.
 *)
 unit llvmAPI;
 
@@ -17,8 +17,8 @@ unit llvmAPI;
   {$ENDIF}
 {$ENDIF}
 
-{.$DEFINE LLVM_31}                             // LLVM Version 3.1
-{$DEFINE LLVM_32}                             // LLVM Version 3.2
+{.$DEFINE LLVM_32}                             // LLVM Version 3.2
+{$DEFINE LLVM_33}                             // LLVM Version 3.3
 
 {$DEFINE LLVM_DEBUG}                          // Only for debug w/ vLogs
 {.$DEFINE LLVM_TRACE}                          // Only for trace w/ vLogs
@@ -30,7 +30,11 @@ unit llvmAPI;
 {$DEFINE LLVM_API_BITWRITER}                  // BitWriter.h
 {$DEFINE LLVM_API_CORE}                       // Core.h
 {.$DEFINE LLVM_API_DISASSEMBLER}               // Disassembler.h
+
+{$IFDEF LLVM_32}
 {.$DEFINE LLVM_API_ENHANCEDDISASSEMBLY}        // EnhancedDisassembly.h
+{$ENDIF}
+
 {$DEFINE LLVM_API_EXECUTIONENGINE}            // ExecutionEngine.h
 {.$DEFINE LLVM_API_INITIALIZATION}             // Initialization.h
 {$DEFINE LLVM_API_LINKER}                     // Linker.h
@@ -38,7 +42,7 @@ unit llvmAPI;
 {.$DEFINE LLVM_API_LTO}                        // lto.h
 {$DEFINE LLVM_API_OBJECT}                     // Object.h
 {$DEFINE LLVM_API_TARGET}                     // Target.h
-{.$DEFINE LLVM_API_TARGETMACHINE}              // TargetMachine.h
+{$DEFINE LLVM_API_TARGETMACHINE}              // TargetMachine.h
 
 {.$DEFINE LLVM_API_IPO}                        // Transforms\IPO.h
 {.$DEFINE LLVM_API_PASSMANAGERBUILDER}         // Transforms\PassManagerBuilder.h
@@ -58,15 +62,15 @@ uses
 
 // Internals & workarounds
 const
-{$IFDEF LLVM_31}
-  LLVMVersion = '3.1';
-  LLVMVersionMajor = 3;
-  LLVMVersionMinor = 1;
-{$ENDIF}
 {$IFDEF LLVM_32}
   LLVMVersion = '3.2';
   LLVMVersionMajor = 3;
   LLVMVersionMinor = 2;
+{$ENDIF}
+{$IFDEF LLVM_33}
+  LLVMVersion = '3.3';
+  LLVMVersionMajor = 3;
+  LLVMVersionMinor = 3;
 {$ENDIF}
 {$IFNDEF CPUX64}
   LLVMArch = 'x86';
@@ -94,8 +98,6 @@ type
   );
 {$ENDIF}
 
-
-// Converted C API
 type
 //*================================================= START of Core.h =================================================*//
 {$IFDEF LLVM_API_CORE}
@@ -119,11 +121,6 @@ type
  * Many exotic languages can interoperate with C code but have a harder time
  * with C++ due to name mangling. So in addition to C, this interface enables
  * tools written in such languages.
- *
- * When included into a C++ source file, also declares 'wrap' and 'unwrap'
- * helpers to perform opaque reference<-->pointer conversions. These helpers
- * are shorter and more tightly typed than writing the casts by hand when
- * authoring bindings. In assert builds, they will do runtime type checking.
  *
  * @{
  *)
@@ -264,10 +261,12 @@ typedef enum {
     LLVMUWTable = 1 << 30,
     LLVMNonLazyBind = 1 << 31
 
-    // FIXME: This attribute is currently not included in the C API as
-    // a temporary measure until the API/ABI impact to the C API is understood
-    // and the path forward agreed upon.
-    //LLVMAddressSafety = 1ULL << 32
+    /* FIXME: These attributes are currently not included in the C API as
+       a temporary measure until the API/ABI impact to the C API is understood
+       and the path forward agreed upon.
+    LLVMAddressSafety = 1ULL << 32
+	LLVMStackProtectStrongAttribute = 1ULL<<33
+	*/
 } LLVMAttribute;
 *)
   // #WARNING
@@ -299,10 +298,12 @@ typedef enum {
     LLVMUWTable                  = 1 shl 30,
     LLVMNonLazyBind              = 1 shl 31
 
-    // FIXME: This attribute is currently not included in the C API as
-    // a temporary measure until the API/ABI impact to the C API is understood
-    // and the path forward agreed upon.
-    //LLVMAddressSafety          = 1ULL shl 32
+    (* FIXME: These attributes are currently not included in the C API as
+       a temporary measure until the API/ABI impact to the C API is understood
+       and the path forward agreed upon.
+    LLVMAddressSafety          = 1ULL shl 32
+	LLVMStackProtectStrongAttribute = 1ULL<<33
+	*)
   );
 
 (*
@@ -527,9 +528,7 @@ typedef enum {
     LLVMAvailableExternallyLinkage,
     LLVMLinkOnceAnyLinkage, // Keep one copy of function when linking (inline)
     LLVMLinkOnceODRLinkage, // Same, but only replaced by something equivalent. 
-{$IFDEF LLVM_32}
     LLVMLinkOnceODRAutoHideLinkage, // Like LinkOnceODR, but possibly hidden. 
-{$ENDIF}
     LLVMWeakAnyLinkage,     // Keep one copy of function when linking (weak) 
     LLVMWeakODRLinkage,     // Same, but only replaced by something equivalent. 
     LLVMAppendingLinkage,   // Special purpose, only applies to global arrays 
@@ -542,9 +541,6 @@ typedef enum {
     LLVMCommonLinkage,      // Tentative definitions 
     LLVMLinkerPrivateLinkage, // Like Private, but linker removes. 
     LLVMLinkerPrivateWeakLinkage // Like LinkerPrivate, but is weak.
-{$IFDEF LLVM_31}
-    ,LLVMLinkerPrivateWeakDefAutoLinkage // Like LinkerPrivateWeak, but possibly hidden.
-{$ENDIF}
   );
 
 (*
@@ -654,6 +650,125 @@ typedef enum {
     LLVMLandingPadFilter    // A filter clause  
   );
 
+{$IFDEF LLVM_33}
+(*
+typedef enum {
+  LLVMNotThreadLocal = 0,
+  LLVMGeneralDynamicTLSModel,
+  LLVMLocalDynamicTLSModel,
+  LLVMInitialExecTLSModel,
+  LLVMLocalExecTLSModel
+} LLVMThreadLocalMode;
+*)
+  LLVMThreadLocalMode = (
+    LLVMNotThreadLocal = 0,
+    LLVMGeneralDynamicTLSModel,
+    LLVMLocalDynamicTLSModel,
+    LLVMInitialExecTLSModel,
+    LLVMLocalExecTLSModel
+  );
+
+(*
+typedef enum {
+  LLVMAtomicOrderingNotAtomic = 0, /**< A load or store which is not atomic */
+  LLVMAtomicOrderingUnordered = 1, /**< Lowest level of atomicity, guarantees
+                                     somewhat sane results, lock free. */
+  LLVMAtomicOrderingMonotonic = 2, /**< guarantees that if you take all the 
+                                     operations affecting a specific address, 
+                                     a consistent ordering exists */
+  LLVMAtomicOrderingAcquire = 4, /**< Acquire provides a barrier of the sort 
+                                   necessary to acquire a lock to access other 
+                                   memory with normal loads and stores. */
+  LLVMAtomicOrderingRelease = 5, /**< Release is similar to Acquire, but with 
+                                   a barrier of the sort necessary to release 
+                                   a lock. */
+  LLVMAtomicOrderingAcquireRelease = 6, /**< provides both an Acquire and a 
+                                          Release barrier (for fences and 
+                                          operations which both read and write
+                                           memory). */
+  LLVMAtomicOrderingSequentiallyConsistent = 7 /**< provides Acquire semantics 
+                                                 for loads and Release 
+                                                 semantics for stores. 
+                                                 Additionally, it guarantees 
+                                                 that a total ordering exists 
+                                                 between all 
+                                                 SequentiallyConsistent 
+                                                 operations. */
+} LLVMAtomicOrdering;
+*)
+  LLVMAtomicOrdering = (
+    LLVMAtomicOrderingNotAtomic = 0, (**< A load or store which is not atomic *)
+    LLVMAtomicOrderingUnordered = 1, (**< Lowest level of atomicity, guarantees
+                                       somewhat sane results, lock free. *)
+    LLVMAtomicOrderingMonotonic = 2, (**< guarantees that if you take all the 
+                                       operations affecting a specific address, 
+                                       a consistent ordering exists *)
+    LLVMAtomicOrderingAcquire = 4, (**< Acquire provides a barrier of the sort 
+                                     necessary to acquire a lock to access other 
+                                     memory with normal loads and stores. *)
+    LLVMAtomicOrderingRelease = 5, (**< Release is similar to Acquire, but with 
+                                     a barrier of the sort necessary to release 
+                                     a lock. *)
+    LLVMAtomicOrderingAcquireRelease = 6, (**< provides both an Acquire and a 
+                                            Release barrier (for fences and 
+                                            operations which both read and write
+                                             memory). *)
+    LLVMAtomicOrderingSequentiallyConsistent = 7 (**< provides Acquire semantics 
+                                                   for loads and Release 
+                                                   semantics for stores. 
+                                                   Additionally, it guarantees 
+                                                   that a total ordering exists 
+                                                   between all 
+                                                   SequentiallyConsistent 
+                                                   operations. *)
+  );
+
+(*
+typedef enum {
+    LLVMAtomicRMWBinOpXchg, /**< Set the new value and return the one old */
+    LLVMAtomicRMWBinOpAdd, /**< Add a value and return the old one */
+    LLVMAtomicRMWBinOpSub, /**< Subtract a value and return the old one */
+    LLVMAtomicRMWBinOpAnd, /**< And a value and return the old one */
+    LLVMAtomicRMWBinOpNand, /**< Not-And a value and return the old one */
+    LLVMAtomicRMWBinOpOr, /**< OR a value and return the old one */
+    LLVMAtomicRMWBinOpXor, /**< Xor a value and return the old one */
+    LLVMAtomicRMWBinOpMax, /**< Sets the value if it's greater than the
+                             original using a signed comparison and return 
+                             the old one */
+    LLVMAtomicRMWBinOpMin, /**< Sets the value if it's Smaller than the
+                             original using a signed comparison and return 
+                             the old one */
+    LLVMAtomicRMWBinOpUMax, /**< Sets the value if it's greater than the
+                             original using an unsigned comparison and return 
+                             the old one */
+    LLVMAtomicRMWBinOpUMin /**< Sets the value if it's greater than the
+                             original using an unsigned comparison  and return 
+                             the old one */
+} LLVMAtomicRMWBinOp;
+*)
+  LLVMAtomicRMWBinOp = (
+    LLVMAtomicRMWBinOpXchg, (**< Set the new value and return the one old *)
+    LLVMAtomicRMWBinOpAdd, (**< Add a value and return the old one *)
+    LLVMAtomicRMWBinOpSub, (**< Subtract a value and return the old one *)
+    LLVMAtomicRMWBinOpAnd, (**< And a value and return the old one *)
+    LLVMAtomicRMWBinOpNand, (**< Not-And a value and return the old one *)
+    LLVMAtomicRMWBinOpOr, (**< OR a value and return the old one *)
+    LLVMAtomicRMWBinOpXor, (**< Xor a value and return the old one *)
+    LLVMAtomicRMWBinOpMax, (**< Sets the value if it's greater than the
+                             original using a signed comparison and return 
+                             the old one *)
+    LLVMAtomicRMWBinOpMin, (**< Sets the value if it's Smaller than the
+                             original using a signed comparison and return 
+                             the old one *)
+    LLVMAtomicRMWBinOpUMax, (**< Sets the value if it's greater than the
+                             original using an unsigned comparison and return 
+                             the old one *)
+    LLVMAtomicRMWBinOpUMin (**< Sets the value if it's greater than the
+                             original using an unsigned comparison  and return 
+                             the old one *)
+  );
+{$ENDIF}
+  
 (*
  * @}
  *)
@@ -663,6 +778,18 @@ typedef enum {
   TLLVMInitializeCore = procedure(R: LLVMPassRegistryRef); cdecl;
 {$ELSE}
   procedure LLVMInitializeCore(R: LLVMPassRegistryRef); cdecl; external LLVMLibrary name 'LLVMInitializeCore';
+{$ENDIF}
+
+{$IFDEF LLVM_33}
+(** Deallocate and destroy all ManagedStatic variables.
+    @see llvm::llvm_shutdown
+    @see ManagedStatic *)
+  //void LLVMShutdown();
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMShutdown = procedure(); cdecl;
+{$ELSE}
+  procedure LLVMShutdown(); cdecl; external LLVMLibrary name 'LLVMShutdown';
+{$ENDIF}
 {$ENDIF}
 
 
@@ -853,7 +980,6 @@ typedef enum {
   procedure LLVMDumpModule(M: LLVMModuleRef); cdecl; external LLVMLibrary name 'LLVMDumpModule';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
 (*
  * Print a representation of a module to a file. The ErrorMessage needs to be
  * disposed with LLVMDisposeMessage. Returns 0 on success, 1 otherwise.
@@ -865,7 +991,6 @@ typedef enum {
   TLLVMPrintModuleToFile = function(M: LLVMModuleRef; Filename: PAnsiChar; var ErrorMessage: PAnsiChar): LLVMBool; cdecl;
 {$ELSE}
   function LLVMPrintModuleToFile(M: LLVMModuleRef; Filename: PAnsiChar; var ErrorMessage: PAnsiChar): LLVMBool; cdecl; external LLVMLibrary name 'LLVMPrintModuleToFile';
-{$ENDIF}
 {$ENDIF}
 
 (*
@@ -3275,6 +3400,33 @@ typedef enum {
   procedure LLVMSetGlobalConstant(GlobalVar: LLVMValueRef; IsConstant: LLVMBool); cdecl; external LLVMLibrary name 'LLVMSetGlobalConstant';
 {$ENDIF}
 
+{$IFDEF LLVM_33}
+  //LLVMThreadLocalMode LLVMGetThreadLocalMode(LLVMValueRef GlobalVar);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMGetThreadLocalMode = function(GlobalVar: LLVMValueRef): LLVMThreadLocalMode; cdecl;
+{$ELSE}
+  function LLVMGetThreadLocalMode(GlobalVar: LLVMValueRef): LLVMThreadLocalMode; cdecl; external LLVMLibrary name 'LLVMGetThreadLocalMode';
+{$ENDIF}
+  //void LLVMSetThreadLocalMode(LLVMValueRef GlobalVar, LLVMThreadLocalMode Mode);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMSetThreadLocalMode = procedure(GlobalVar: LLVMValueRef; Mode: LLVMThreadLocalMode); cdecl;
+{$ELSE}
+  procedure LLVMSetThreadLocalMode(GlobalVar: LLVMValueRef; Mode: LLVMThreadLocalMode); cdecl; external LLVMLibrary name 'LLVMSetThreadLocalMode';
+{$ENDIF}
+  //LLVMBool LLVMIsExternallyInitialized(LLVMValueRef GlobalVar);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMIsExternallyInitialized = function(GlobalVar: LLVMValueRef): LLVMBool; cdecl;
+{$ELSE}
+  function LLVMIsExternallyInitialized(GlobalVar: LLVMValueRef): LLVMBool; cdecl; external LLVMLibrary name 'LLVMIsExternallyInitialized';
+{$ENDIF}
+  //void LLVMSetExternallyInitialized(LLVMValueRef GlobalVar, LLVMBool IsExtInit);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMSetExternallyInitialized = procedure(GlobalVar: LLVMValueRef; IsExtInit: LLVMBool); cdecl;
+{$ELSE}
+  procedure LLVMSetExternallyInitialized(GlobalVar: LLVMValueRef; IsExtInit: LLVMBool); cdecl; external LLVMLibrary name 'LLVMSetExternallyInitialized';
+{$ENDIF}
+{$ENDIF}
+
 (*
  * @}
  *)
@@ -3399,6 +3551,19 @@ typedef enum {
   TLLVMAddFunctionAttr = procedure(Fn: LLVMValueRef; PA: LLVMAttribute); cdecl;
 {$ELSE}
   procedure LLVMAddFunctionAttr(Fn: LLVMValueRef; PA: LLVMAttribute); cdecl; external LLVMLibrary name 'LLVMAddFunctionAttr';
+{$ENDIF}
+
+{$IFDEF LLVM_33}
+(*
+ * Add a target-dependent attribute to a fuction
+ * @see llvm::AttrBuilder::addAttribute()
+ *)
+  //void LLVMAddTargetDependentFunctionAttr(LLVMValueRef Fn, const char *A, const char *V);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMAddTargetDependentFunctionAttr = procedure(Fn: LLVMValueRef; A: PAnsiChar; V: PAnsiChar); cdecl;
+{$ELSE}
+  procedure LLVMAddTargetDependentFunctionAttr(Fn: LLVMValueRef; A: PAnsiChar; V: PAnsiChar); cdecl; external LLVMLibrary name 'LLVMAddTargetDependentFunctionAttr';
+{$ENDIF}
 {$ENDIF}
 
 (*
@@ -3677,7 +3842,6 @@ typedef enum {
   function LLVMGetMDString(V: LLVMValueRef; Len: PCardinal): PAnsiChar; cdecl; external LLVMLibrary name 'LLVMGetMDString';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
 (*
  * Obtain the number of operands from an MDNode value.
  *
@@ -3690,9 +3854,7 @@ typedef enum {
 {$ELSE}
   function LLVMGetMDNodeNumOperands(V: LLVMValueRef): Cardinal; cdecl; external LLVMLibrary name 'LLVMGetMDNodeNumOperands';
 {$ENDIF}
-{$ENDIF}
 
-{$IFDEF LLVM_32}
 (*
  * Obtain the given MDNode's operands.
  *
@@ -3709,7 +3871,6 @@ typedef enum {
   TLLVMGetMDNodeOperands = procedure(V: LLVMValueRef; var Dest: LLVMValueRef); cdecl;
 {$ELSE}
   procedure LLVMGetMDNodeOperands(V: LLVMValueRef; var Dest: LLVMValueRef); cdecl; external LLVMLibrary name 'LLVMGetMDNodeOperands';
-{$ENDIF}
 {$ENDIF}
 
 (*
@@ -5079,6 +5240,18 @@ typedef enum {
   function LLVMBuildPtrDiff(Unknown: LLVMBuilderRef; LHS: LLVMValueRef; RHS: LLVMValueRef; Name: PAnsiChar): LLVMValueRef; cdecl; external LLVMLibrary name 'LLVMBuildPtrDiff';
 {$ENDIF}
 
+{$IFDEF LLVM_33}
+  //LLVMValueRef LLVMBuildAtomicRMW(LLVMBuilderRef B,LLVMAtomicRMWBinOp op,  
+  //                                LLVMValueRef PTR, LLVMValueRef Val, 
+  //                                LLVMAtomicOrdering ordering, 
+  //                                LLVMBool singleThread);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMBuildAtomicRMW = function(B: LLVMBuilderRef; op: LLVMAtomicRMWBinOp; PTR: LLVMValueRef; Val: LLVMValueRef; ordering: LLVMAtomicOrdering; singleThread: LLVMBool): LLVMValueRef; cdecl;
+{$ELSE}
+  function LLVMBuildAtomicRMW(B: LLVMBuilderRef; op: LLVMAtomicRMWBinOp; PTR: LLVMValueRef; Val: LLVMValueRef; ordering: LLVMAtomicOrdering; singleThread: LLVMBool): LLVMValueRef; cdecl; external LLVMLibrary name 'LLVMBuildAtomicRMW';
+{$ENDIF}
+{$ENDIF}
+
 (*
  * @}
  *)
@@ -5136,6 +5309,39 @@ typedef enum {
 {$ELSE}
   function LLVMCreateMemoryBufferWithSTDIN(var OutMemBuf: LLVMMemoryBufferRef; var OutMessage: PAnsiChar): LLVMBool; cdecl; external LLVMLibrary name 'LLVMCreateMemoryBufferWithSTDIN';
 {$ENDIF}
+
+{$IFDEF LLVM_33}
+  //LLVMMemoryBufferRef LLVMCreateMemoryBufferWithMemoryRange(const char *InputData,
+  //                                                          size_t InputDataLength,
+  //                                                          const char *BufferName,
+  //                                                          LLVMBool RequiresNullTerminator);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMCreateMemoryBufferWithMemoryRange = function(InputData: PAnsiChar; InputDataLength: size_t; BufferName: PAnsiChar; RequiresNullTerminator: LLVMBool): LLVMMemoryBufferRef; cdecl;
+{$ELSE}
+  function LLVMCreateMemoryBufferWithMemoryRange(InputData: PAnsiChar; InputDataLength: size_t; BufferName: PAnsiChar; RequiresNullTerminator: LLVMBool): LLVMMemoryBufferRef; cdecl; external LLVMLibrary name 'LLVMCreateMemoryBufferWithMemoryRange';
+{$ENDIF}
+  //LLVMMemoryBufferRef LLVMCreateMemoryBufferWithMemoryRangeCopy(const char *InputData,
+  //                                                              size_t InputDataLength,
+  //                                                              const char *BufferName);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMCreateMemoryBufferWithMemoryRangeCopy = function(InputData: PAnsiChar; InputDataLength: size_t; BufferName: PAnsiChar): LLVMMemoryBufferRef; cdecl;
+{$ELSE}
+  function LLVMCreateMemoryBufferWithMemoryRangeCopy(InputData: PAnsiChar; InputDataLength: size_t; BufferName: PAnsiChar): LLVMMemoryBufferRef; cdecl; external LLVMLibrary name 'LLVMCreateMemoryBufferWithMemoryRangeCopy';
+{$ENDIF}
+  //const char *LLVMGetBufferStart(LLVMMemoryBufferRef MemBuf);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMGetBufferStart = function(MemBuf: LLVMMemoryBufferRef): PAnsiChar; cdecl;
+{$ELSE}
+  function LLVMGetBufferStart(MemBuf: LLVMMemoryBufferRef): PAnsiChar; cdecl; external LLVMLibrary name 'LLVMGetBufferStart';
+{$ENDIF}
+  //size_t LLVMGetBufferSize(LLVMMemoryBufferRef MemBuf);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMGetBufferSize = function(MemBuf: LLVMMemoryBufferRef): size_t; cdecl;
+{$ELSE}
+  function LLVMGetBufferSize(MemBuf: LLVMMemoryBufferRef): size_t; cdecl; external LLVMLibrary name 'LLVMGetBufferSize';
+{$ENDIF}
+{$ENDIF}
+
   //void LLVMDisposeMemoryBuffer(LLVMMemoryBufferRef MemBuf);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMDisposeMemoryBuffer = procedure(MemBuf: LLVMMemoryBufferRef); cdecl;
@@ -5253,95 +5459,46 @@ typedef enum {
   procedure LLVMDisposePassManager(PM: LLVMPassManagerRef); cdecl; external LLVMLibrary name 'LLVMDisposePassManager';
 {$ENDIF}
 
+{$IFDEF LLVM_33}
 (*
-namespace llvm {
-  class MemoryBuffer;
-  class PassManagerBase;
-  
-  #define DEFINE_SIMPLE_CONVERSION_FUNCTIONS(ty, ref)   \
-    inline ty *unwrap(ref P) {                          \
-      return reinterpret_cast<ty*>(P);                  \
-    }                                                   \
-                                                        \
-    inline ref wrap(const ty *P) {                      \
-      return reinterpret_cast<ref>(const_cast<ty*>(P)); \
-    }
-  
-  #define DEFINE_ISA_CONVERSION_FUNCTIONS(ty, ref)  \
-    DEFINE_SIMPLE_CONVERSION_FUNCTIONS(ty, ref)         \
-                                                        \
-    template<typename T>                                \
-    inline T *unwrap(ref P) {                           \
-      return cast<T>(unwrap(P));                        \
-    }
-  
-  #define DEFINE_STDCXX_CONVERSION_FUNCTIONS(ty, ref)   \
-    DEFINE_SIMPLE_CONVERSION_FUNCTIONS(ty, ref)         \
-                                                        \
-    template<typename T>                                \
-    inline T *unwrap(ref P) {                           \
-      T*Q = (T.)unwrap(P);                             \
-      assert(Q && "Invalid cast!");                     \
-      return Q;                                         \
-    }
-  
-  DEFINE_ISA_CONVERSION_FUNCTIONS   (Type,               LLVMTypeRef          )
-  DEFINE_ISA_CONVERSION_FUNCTIONS   (Value,              LLVMValueRef         )
-  DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Module,             LLVMModuleRef        )
-  DEFINE_SIMPLE_CONVERSION_FUNCTIONS(BasicBlock,         LLVMBasicBlockRef    )
-  DEFINE_SIMPLE_CONVERSION_FUNCTIONS(IRBuilder<>,        LLVMBuilderRef       )
-  DEFINE_SIMPLE_CONVERSION_FUNCTIONS(MemoryBuffer,       LLVMMemoryBufferRef  )
-  DEFINE_SIMPLE_CONVERSION_FUNCTIONS(LLVMContext,        LLVMContextRef       )
-  DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Use,                LLVMUseRef           )
-  DEFINE_STDCXX_CONVERSION_FUNCTIONS(PassManagerBase,    LLVMPassManagerRef   )
-  DEFINE_STDCXX_CONVERSION_FUNCTIONS(PassRegistry,       LLVMPassRegistryRef  )
-  // LLVMModuleProviderRef exists for historical reasons, but now just holds a Module.
-  inline Module *unwrap(LLVMModuleProviderRef MP) {
-    return reinterpret_cast<Module*>(MP);
-  }
-  
-  #undef DEFINE_STDCXX_CONVERSION_FUNCTIONS
-  #undef DEFINE_ISA_CONVERSION_FUNCTIONS
-  #undef DEFINE_SIMPLE_CONVERSION_FUNCTIONS
+ * @defgroup LLVMCCoreThreading Threading
+ *
+ * Handle the structures needed to make LLVM safe for multithreading.
+ *
+ * @{
+ *)
 
-  // Specialized opaque context conversions.
-  inline LLVMContext **unwrap(LLVMContextRef* Tys) {
-    return reinterpret_cast<LLVMContext**>(Tys);
-  }
-  
-  inline LLVMContextRef *wrap(const LLVMContext **Tys) {
-    return reinterpret_cast<LLVMContextRef*>(const_cast<LLVMContext**>(Tys));
-  }
-  
-  // Specialized opaque type conversions.
-  inline Type **unwrap(LLVMTypeRef* Tys) {
-    return reinterpret_cast<Type**>(Tys);
-  }
-  
-  inline LLVMTypeRef *wrap(Type **Tys) {
-    return reinterpret_cast<LLVMTypeRef*>(const_cast<Type**>(Tys));
-  }
-  
-  // Specialized opaque value conversions.
-  inline Value **unwrap(LLVMValueRef *Vals) {
-    return reinterpret_cast<Value**>(Vals);
-  }
-  
-  template<typename T>
-  inline T **unwrap(LLVMValueRef *Vals, unsigned Length) {
-    #if DEBUG
-    for (LLVMValueRef *I = Vals, *E = Vals + Length; I != E; ++I)
-      cast<T>(*I);
-    #endif
-    (void)Length;
-    return reinterpret_cast<T**>(Vals);
-  }
-  
-  inline LLVMValueRef *wrap(const Value **Vals) {
-    return reinterpret_cast<LLVMValueRef*>(const_cast<Value**>(Vals));
-  }
-}
-*)
+(** Allocate and initialize structures needed to make LLVM safe for
+    multithreading. The return value indicates whether multithreaded
+    initialization succeeded. Must be executed in isolation from all
+    other LLVM api calls.
+    @see llvm::llvm_start_multithreaded *)
+  //LLVMBool LLVMStartMultithreaded();
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMStartMultithreaded = function(): LLVMBool; cdecl;
+{$ELSE}
+  function LLVMStartMultithreaded(): LLVMBool; cdecl; external LLVMLibrary name 'LLVMStartMultithreaded';
+{$ENDIF}
+
+(** Deallocate structures necessary to make LLVM safe for multithreading.
+    Must be executed in isolation from all other LLVM api calls.
+    @see llvm::llvm_stop_multithreaded *)
+  //void LLVMStopMultithreaded();
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMStopMultithreaded = procedure(); cdecl;
+{$ELSE}
+  procedure LLVMStopMultithreaded(); cdecl; external LLVMLibrary name 'LLVMStopMultithreaded';
+{$ENDIF}
+
+(** Check whether LLVM is executing in thread-safe mode or not.
+    @see llvm::llvm_is_multithreaded *)
+  //LLVMBool LLVMIsMultithreaded();
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMIsMultithreaded = function(): LLVMBool; cdecl;
+{$ELSE}
+  function LLVMIsMultithreaded(PM: LLVMPassManagerRef): LLVMBool; cdecl; external LLVMLibrary name 'LLVMIsMultithreaded';
+{$ENDIF}
+{$ENDIF}
 
 {$ENDIF}
 //*------------------------------------------------- END of Core.h -------------------------------------------------*//
@@ -5527,6 +5684,15 @@ typedef enum {
   procedure LLVMInitializeScalarOpts(R: LLVMPassRegistryRef); cdecl;  external LLVMLibrary name 'LLVMInitializeScalarOpts';
 {$ENDIF}
 
+{$IFDEF LLVM_33}
+  //void LLVMInitializeObjCARCOpts(LLVMPassRegistryRef R);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMInitializeObjCARCOpts = procedure(R: LLVMPassRegistryRef); cdecl; 
+{$ELSE}
+  procedure LLVMInitializeObjCARCOpts(R: LLVMPassRegistryRef); cdecl;  external LLVMLibrary name 'LLVMInitializeObjCARCOpts';
+{$ENDIF}
+{$ENDIF}
+
   //void LLVMInitializeVectorization(LLVMPassRegistryRef R);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMInitializeVectorization = procedure(R: LLVMPassRegistryRef); cdecl; 
@@ -5588,7 +5754,6 @@ typedef enum {
 
 
 //*================================================= START of Linker.h =================================================*//
-{$IFDEF LLVM_32}
 {$IFDEF LLVM_API_LINKER}
 
 type
@@ -5616,7 +5781,6 @@ typedef enum {
   function LLVMLinkModules(Dest: LLVMModuleRef; Src: LLVMModuleRef; Mode: LLVMLinkerMode; var OutMessage: PAnsiChar): LLVMBool; cdecl;  external LLVMLibrary name 'LLVMLinkModules';
 {$ENDIF}
 
-{$ENDIF}
 {$ENDIF}
 //*------------------------------------------------- END of Linker.h -------------------------------------------------*//
   
@@ -5925,7 +6089,6 @@ type
   function LLVMPointerSize(Unknown: LLVMTargetDataRef): Cardinal; cdecl; external LLVMLibrary name 'LLVMPointerSize';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
 (** Returns the pointer size in bytes for a target for a specified
     address space.
     See the method llvm::DataLayout::getPointerSize. *)
@@ -5934,7 +6097,6 @@ type
   TLLVMPointerSizeForAS = function(Unknown: LLVMTargetDataRef; AS_: Cardinal): Cardinal; cdecl;
 {$ELSE}
   function LLVMPointerSizeForAS(Unknown: LLVMTargetDataRef; AS_: Cardinal): Cardinal; cdecl; external LLVMLibrary name 'LLVMPointerSizeForAS';
-{$ENDIF}
 {$ENDIF}
 
 (** Returns the integer type that is the same size as a pointer on a target.
@@ -5946,7 +6108,6 @@ type
   function LLVMIntPtrType(Unknown: LLVMTargetDataRef): LLVMTypeRef; cdecl; external LLVMLibrary name 'LLVMIntPtrType';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
 (** Returns the integer type that is the same size as a pointer on a target.
     This version allows the address space to be specified.
     See the method llvm::DataLayout::getIntPtrType. *)
@@ -5955,7 +6116,6 @@ type
   TLLVMIntPtrTypeForAS = function(Unknown: LLVMTargetDataRef; AS_: Cardinal): LLVMTypeRef; cdecl;
 {$ELSE}
   function LLVMIntPtrTypeForAS(Unknown: LLVMTargetDataRef; AS_: Cardinal): LLVMTypeRef	; cdecl; external LLVMLibrary name 'LLVMIntPtrTypeForAS';
-{$ENDIF}
 {$ENDIF}
 
 (** Computes the size of a type in bytes for a target.
@@ -6051,29 +6211,6 @@ type
   procedure LLVMDisposeTargetData(Unknown: LLVMTargetDataRef); cdecl; external LLVMLibrary name 'LLVMDisposeTargetData';
 {$ENDIF}
 
-(*
-namespace llvm {
-  class DataLayout;
-  class TargetLibraryInfo;
-
-  inline DataLayout *unwrap(LLVMTargetDataRef P) {
-    return reinterpret_cast<DataLayout*>(P);
-  }
-  
-  inline LLVMTargetDataRef wrap(const DataLayout *P) {
-    return reinterpret_cast<LLVMTargetDataRef>(const_cast<DataLayout*>(P));
-  }
-
-  inline TargetLibraryInfo *unwrap(LLVMTargetLibraryInfoRef P) {
-    return reinterpret_cast<TargetLibraryInfo*>(P);
-  }
-
-  inline LLVMTargetLibraryInfoRef wrap(const TargetLibraryInfo *P) {
-    TargetLibraryInfo *X = const_cast<TargetLibraryInfo*>(P);
-    return reinterpret_cast<LLVMTargetLibraryInfoRef>(X);
-  }
-}
-*)
 {$ENDIF}
 //*------------------------------------------------- END of Target.h -------------------------------------------------*//
 
@@ -6082,9 +6219,15 @@ namespace llvm {
 {$IFDEF LLVM_API_TARGETMACHINE}
 
   //typedef struct LLVMTargetMachine *LLVMTargetMachineRef;
+{$IFDEF LLVM_33}
+  LLVMOpaqueTargetMachine = packed record
+  end;
+  LLVMTargetMachineRef = ^LLVMOpaqueTargetMachine;
+{$ELSE}
   LLVMTargetMachine = packed record
   end;
   LLVMTargetMachineRef = ^LLVMTargetMachine;
+{$ENDIF}
   //typedef struct LLVMTarget *LLVMTargetRef;
   LLVMTarget = packed record
   end;
@@ -6284,26 +6427,17 @@ typedef enum {
   function LLVMTargetMachineEmitToFile(T: LLVMTargetMachineRef; M: LLVMModuleRef; Filename: PAnsiChar; codegen: LLVMCodeGenFileType; var ErrorMessage: PAnsiChar): LLVMBool; cdecl; external LLVMLibrary name 'LLVMTargetMachineEmitToFile';
 {$ENDIF}
 
-(*
-namespace llvm {
-  class TargetMachine;
-  class Target;
+{$IFDEF LLVM_33}
+(** Compile the LLVM IR stored in \p M and store the result in \p OutMemBuf. *)
+  //LLVMBool LLVMTargetMachineEmitToMemoryBuffer(LLVMTargetMachineRef T, LLVMModuleRef M,
+  //  LLVMCodeGenFileType codegen, char** ErrorMessage, LLVMMemoryBufferRef *OutMemBuf);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMTargetMachineEmitToMemoryBuffer = function(T: LLVMTargetMachineRef; M: LLVMModuleRef; Filename: PAnsiChar; codegen: LLVMCodeGenFileType; var ErrorMessage: PAnsiChar; var OutMemBuf: LLVMMemoryBufferRef): LLVMBool; cdecl;
+{$ELSE}
+  function LLVMTargetMachineEmitToMemoryBuffer(T: LLVMTargetMachineRef; M: LLVMModuleRef; Filename: PAnsiChar; codegen: LLVMCodeGenFileType; var ErrorMessage: PAnsiChar; var OutMemBuf: LLVMMemoryBufferRef): LLVMBool; cdecl; external LLVMLibrary name 'LLVMTargetMachineEmitToMemoryBuffer';
+{$ENDIF}
+{$ENDIF}
 
-  inline TargetMachine *unwrap(LLVMTargetMachineRef P) {
-    return reinterpret_cast<TargetMachine*>(P);
-  }
-  inline Target *unwrap(LLVMTargetRef P) {
-    return reinterpret_cast<Target*>(P);
-  }
-  inline LLVMTargetMachineRef wrap(const TargetMachine *P) {
-    return reinterpret_cast<LLVMTargetMachineRef>(
-      const_cast<TargetMachine*>(P));
-  }
-  inline LLVMTargetRef wrap(const Target * P) {
-    return reinterpret_cast<LLVMTargetRef>(const_cast<Target*>(P));
-  }
-}
-*)
 
 {$ENDIF}
 //*------------------------------------------------- END of TargetMachine.h -------------------------------------------------*//
@@ -6550,48 +6684,6 @@ type
   function LLVMGetRelocationValueString(RI: LLVMRelocationIteratorRef): PAnsiChar; external LLVMLibrary name 'LLVMGetRelocationValueString';
 {$ENDIF}
 
-//namespace llvm {
-//  namespace object {
-//    inline ObjectFile *unwrap(LLVMObjectFileRef OF) {
-//      return reinterpret_cast<ObjectFile*>(OF);
-//    }
-//
-//    inline LLVMObjectFileRef wrap(const ObjectFile *OF) {
-//      return reinterpret_cast<LLVMObjectFileRef>(const_cast<ObjectFile*>(OF));
-//    }
-//
-//    inline section_iterator *unwrap(LLVMSectionIteratorRef SI) {
-//      return reinterpret_cast<section_iterator*>(SI);
-//    }
-//
-//    inline LLVMSectionIteratorRef
-//    wrap(const section_iterator *SI) {
-//      return reinterpret_cast<LLVMSectionIteratorRef>
-//        (const_cast<section_iterator*>(SI));
-//    }
-//
-//    inline symbol_iterator *unwrap(LLVMSymbolIteratorRef SI) {
-//      return reinterpret_cast<symbol_iterator*>(SI);
-//    }
-//
-//    inline LLVMSymbolIteratorRef
-//    wrap(const symbol_iterator *SI) {
-//      return reinterpret_cast<LLVMSymbolIteratorRef>
-//        (const_cast<symbol_iterator*>(SI));
-//    }
-//
-//    inline relocation_iterator *unwrap(LLVMRelocationIteratorRef SI) {
-//      return reinterpret_cast<relocation_iterator*>(SI);
-//    }
-//
-//    inline LLVMRelocationIteratorRef
-//    wrap(const relocation_iterator *SI) {
-//      return reinterpret_cast<LLVMRelocationIteratorRef>
-//        (const_cast<relocation_iterator*>(SI));
-//    }
-//
-//  }
-//}
 
 {$ENDIF}
 //*------------------------------------------------- END of Object.h -------------------------------------------------*//
@@ -6606,6 +6698,16 @@ type
 {$ELSE}
   procedure LLVMLinkInJIT(); cdecl; external LLVMLibrary name 'LLVMLinkInJIT';
 {$ENDIF}
+
+{$IFDEF LLVM_33}
+  //void LLVMLinkInMCJIT(void);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMLinkInMCJIT = procedure(); cdecl;
+{$ELSE}
+  procedure LLVMLinkInMCJIT(); cdecl; external LLVMLibrary name 'LLVMLinkInMCJIT';
+{$ENDIF}
+{$ENDIF}
+
   //void LLVMLinkInInterpreter(void);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMLinkInInterpreter = procedure(); cdecl;
@@ -6622,6 +6724,24 @@ type
   LLVMOpaqueExecutionEngine = packed record
   end;
   LLVMExecutionEngineRef = ^LLVMOpaqueExecutionEngine;
+  
+{$IFDEF LLVM_33}
+type
+(*
+struct LLVMMCJITCompilerOptions {
+  unsigned OptLevel;
+  LLVMCodeModel CodeModel;
+  LLVMBool NoFramePointerElim;
+  LLVMBool EnableFastISel;
+};
+*)
+  LLVMMCJITCompilerOptions = packed record
+    OptLevel: Cardinal;
+    CodeModel: LLVMCodeModel;
+    NoFramePointerElim: LLVMBool;
+    EnableFastISel: LLVMBool;
+  end;
+{$ENDIF}
 
 (*===-- Operations on generic values --------------------------------------===*)
 
@@ -6708,7 +6828,44 @@ type
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMCreateJITCompilerForModule = function(var OutJIT: LLVMExecutionEngineRef; M: LLVMModuleRef; OptLevel: Cardinal; var OutError: PAnsiChar): LLVMBool; cdecl;
 {$ELSE}
-  function LLVMCreateJITCompilerForModule(var OutJIT: LLVMExecutionEngineRef; M: LLVMModuleRef; OptLevel: Cardinal; var OutError: PAnsiChar): LLVMBool; cdecl;  external LLVMLibrary name 'LLVMCreateJITCompilerForModule';
+  function LLVMCreateJITCompilerForModule(var OutJIT: LLVMExecutionEngineRef; M: LLVMModuleRef; OptLevel: Cardinal; var OutError: PAnsiChar): LLVMBool; cdecl; external LLVMLibrary name 'LLVMCreateJITCompilerForModule';
+{$ENDIF}
+
+{$IFDEF LLVM_33}
+  //void LLVMInitializeMCJITCompilerOptions(
+  //  struct LLVMMCJITCompilerOptions *Options, size_t SizeOfOptions);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMInitializeMCJITCompilerOptions = procedure(var Options: LLVMMCJITCompilerOptions; SizeOfOptions: size_t); cdecl;
+{$ELSE}
+  procedure LLVMInitializeMCJITCompilerOptions(var Options: LLVMMCJITCompilerOptions; SizeOfOptions: size_t); cdecl; external LLVMLibrary name 'LLVMInitializeMCJITCompilerOptions';
+{$ENDIF}
+
+(*
+ * Create an MCJIT execution engine for a module, with the given options. It is
+ * the responsibility of the caller to ensure that all fields in Options up to
+ * the given SizeOfOptions are initialized. It is correct to pass a smaller
+ * value of SizeOfOptions that omits some fields. The canonical way of using
+ * this is:
+ *
+ * LLVMMCJITCompilerOptions options;
+ * LLVMInitializeMCJITCompilerOptions(&options, sizeof(options));
+ * ... fill in those options you care about
+ * LLVMCreateMCJITCompilerForModule(&jit, mod, &options, sizeof(options),
+ *                                  &error);
+ *
+ * Note that this is also correct, though possibly suboptimal:
+ *
+ * LLVMCreateMCJITCompilerForModule(&jit, mod, 0, 0, &error);
+ *)
+  //LLVMBool LLVMCreateMCJITCompilerForModule(
+  //  LLVMExecutionEngineRef *OutJIT, LLVMModuleRef M,
+  //  struct LLVMMCJITCompilerOptions *Options, size_t SizeOfOptions,
+  //  char **OutError);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMCreateMCJITCompilerForModule = function(var OutJIT: LLVMExecutionEngineRef; M: LLVMModuleRef; var Options: LLVMMCJITCompilerOptions; SizeOfOptions: size_t; var OutError: PAnsiChar): LLVMBool; cdecl;
+{$ELSE}
+  function LLVMCreateMCJITCompilerForModule(var OutJIT: LLVMExecutionEngineRef; M: LLVMModuleRef; var Options: LLVMMCJITCompilerOptions; SizeOfOptions: size_t; var OutError: PAnsiChar): LLVMBool; cdecl; external LLVMLibrary name 'LLVMCreateMCJITCompilerForModule';
+{$ENDIF}
 {$ENDIF}
 
 (* Deprecated: Use LLVMCreateExecutionEngineForModule instead. *)
@@ -6858,26 +7015,6 @@ type
   function LLVMGetPointerToGlobal(EE: LLVMExecutionEngineRef; Global: LLVMValueRef): Pointer; cdecl; external LLVMLibrary name 'LLVMGetPointerToGlobal';
 {$ENDIF}
 
-(*
-namespace llvm {
-  struct GenericValue;
-  class ExecutionEngine;
-  
-  #define DEFINE_SIMPLE_CONVERSION_FUNCTIONS(ty, ref)   \
-    inline ty *unwrap(ref P) {                          \
-      return reinterpret_cast<ty*>(P);                  \
-    }                                                   \
-                                                        \
-    inline ref wrap(const ty *P) {                      \
-      return reinterpret_cast<ref>(const_cast<ty*>(P)); \
-    }
-  
-  DEFINE_SIMPLE_CONVERSION_FUNCTIONS(GenericValue,    LLVMGenericValueRef   )
-  DEFINE_SIMPLE_CONVERSION_FUNCTIONS(ExecutionEngine, LLVMExecutionEngineRef)
-  
-  #undef DEFINE_SIMPLE_CONVERSION_FUNCTIONS
-}
-*)
 
 {$ENDIF}
 //*------------------------------------------------- END of ExecutionEngine.h -------------------------------------------------*//
@@ -7030,7 +7167,8 @@ const
  * by passing a block of information in the DisInfo parameter and specifying the
  * TagType and callback functions as described above.  These can all be passed
  * as NULL.  If successful, this returns a disassembler context.  If not, it
- * returns NULL.
+ * returns NULL. This function is equivalent to calling LLVMCreateDisasmCPU()
+ * with an empty CPU name.
  *)
   //LLVMDisasmContextRef LLVMCreateDisasm(const char *TripleName, void *DisInfo,
   //                                    int TagType, LLVMOpInfoCallback GetOpInfo,
@@ -7042,7 +7180,26 @@ type
   function LLVMCreateDisasm(TripleName: PAnsiChar; DisInfo: Pointer; TagType: Integer; GetOpInfo: LLVMOpInfoCallback; SymbolLookUp: LLVMSymbolLookupCallback): LLVMDisasmContextRef; cdecl; external LLVMLibrary name 'LLVMCreateDisasm';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
+{$IFDEF LLVM_33}
+(*
+ * Create a disassembler for the TripleName and a specific CPU.  Symbolic
+ * disassembly is supported by passing a block of information in the DisInfo
+ * parameter and specifying the TagType and callback functions as described
+ * above.  These can all be passed * as NULL.  If successful, this returns a
+ * disassembler context.  If not, it returns NULL.
+ *)
+  //LLVMDisasmContextRef LLVMCreateDisasmCPU(const char *Triple, const char *CPU,
+  //                                         void *DisInfo, int TagType,
+  //                                         LLVMOpInfoCallback GetOpInfo,
+  //                                         LLVMSymbolLookupCallback SymbolLookUp);
+{$IFDEF LLVM_DYNAMIC_LINK}
+type
+  TLLVMCreateDisasmCPU = function(TripleName: PAnsiChar; CPU: PAnsiChar; DisInfo: Pointer; TagType: Integer; GetOpInfo: LLVMOpInfoCallback; SymbolLookUp: LLVMSymbolLookupCallback): LLVMDisasmContextRef; cdecl;
+{$ELSE}
+  function LLVMCreateDisasmCPU(TripleName: PAnsiChar; CPU: PAnsiChar; DisInfo: Pointer; TagType: Integer; GetOpInfo: LLVMOpInfoCallback; SymbolLookUp: LLVMSymbolLookupCallback): LLVMDisasmContextRef; cdecl; external LLVMLibrary name 'LLVMCreateDisasmCPU';
+{$ENDIF}
+{$ENDIF}
+
 (*
  * Set the disassembler's options.  Returns 1 if it can set the Options and 0
  * otherwise.
@@ -7054,12 +7211,17 @@ type
 {$ELSE}
   function LLVMSetDisasmOptions(DC: LLVMDisasmContextRef; Options: uint64_t): Integer; cdecl; external LLVMLibrary name 'LLVMSetDisasmOptions';
 {$ENDIF}
-{$ENDIF}
 
-{$IFDEF LLVM_32}
 (* The option to produce marked up assembly. *)
   //#define LLVMDisassembler_Option_UseMarkup 1
   {$DEFINE LLVMDisassembler_Option_UseMarkup 1}
+{$IFDEF LLVM_33}
+(* The option to print immediates as hex. *)
+  //#define LLVMDisassembler_Option_PrintImmHex 2
+  {$DEFINE LLVMDisassembler_Option_PrintImmHex 2}
+(* The option use the other assembler printer variant *)
+  //#define LLVMDisassembler_Option_AsmPrinterVariant 4
+  {$DEFINE LLVMDisassembler_Option_AsmPrinterVariant 4}
 {$ENDIF}
 
 (*
@@ -7525,11 +7687,26 @@ typedef enum {
   procedure lto_codegen_debug_options(cg: lto_code_gen_t; unknown: PAnsiChar); cdecl; external LLVMLibrary name 'lto_codegen_debug_options';
 {$ENDIF}
 
+{$IFDEF LLVM_33}
+(*
+ * Initializes LLVM disassemblers.
+ * FIXME: This doesn't really belong here.
+ *)
+  //extern void
+  //lto_initialize_disassembler(void);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  Tlto_initialize_disassembler = procedure(); cdecl;
+{$ELSE}
+  procedure lto_initialize_disassembler(); cdecl; external LLVMLibrary name 'lto_initialize_disassembler';
+{$ENDIF}
+{$ENDIF}
+
 {$ENDIF}
 //*------------------------------------------------- END of lto.h -------------------------------------------------*//
 
 
 //*================================================= START of EnhancedDisassembly.h =================================================*//
+{$IFDEF LLVM_32}
 {$IFDEF LLVM_API_ENHANCEDDISASSEMBLY}
 
 type
@@ -8218,6 +8395,7 @@ enum {
 {$ENDIF}
 
 {$ENDIF}
+{$ENDIF}
 //*------------------------------------------------- END of EnhancedDisassembly.h -------------------------------------------------*//
 
 
@@ -8446,25 +8624,15 @@ type
   // See llvm::PassManagerBuilder::populateLTOPassManager.
   //void LLVMPassManagerBuilderPopulateLTOPassManager(LLVMPassManagerBuilderRef PMB,
   //                                                LLVMPassManagerRef PM,
-  //                                                bool Internalize,
-  //                                                bool RunInliner);
+  //                                                LLVMBool Internalize,
+  //                                                LLVMBool RunInliner);
 {$IFDEF LLVM_DYNAMIC_LINK}
-  TLLVMPassManagerBuilderPopulateLTOPassManager = procedure(PMB: LLVMPassManagerBuilderRef; PM: LLVMPassManagerRef; Internalize: Boolean; RunInliner: Boolean); cdecl; 
+  TLLVMPassManagerBuilderPopulateLTOPassManager = procedure(PMB: LLVMPassManagerBuilderRef; PM: LLVMPassManagerRef; Internalize: LLVMBool; RunInliner: LLVMBool); cdecl; 
 {$ELSE}
-  procedure LLVMPassManagerBuilderPopulateLTOPassManager(PMB: LLVMPassManagerBuilderRef; PM: LLVMPassManagerRef; Internalize: Boolean; RunInliner: Boolean); cdecl;  external LLVMLibrary name 'LLVMPassManagerBuilderPopulateLTOPassManager';
+  procedure LLVMPassManagerBuilderPopulateLTOPassManager(PMB: LLVMPassManagerBuilderRef; PM: LLVMPassManagerRef; Internalize: LLVMBool; RunInliner: LLVMBool); cdecl;  external LLVMLibrary name 'LLVMPassManagerBuilderPopulateLTOPassManager';
 {$ENDIF}
 
-(*
-namespace llvm {
-  inline PassManagerBuilder *unwrap(LLVMPassManagerBuilderRef P) {
-    return reinterpret_cast<PassManagerBuilder*>(P);
-  }
 
-  inline LLVMPassManagerBuilderRef wrap(PassManagerBuilder *P) {
-    return reinterpret_cast<LLVMPassManagerBuilderRef>(P);
-  }
-}
-*)
 {$ENDIF}
 //*------------------------------------------------- END of PassManagerBuilder.h -------------------------------------------------*//
 
@@ -8728,13 +8896,21 @@ namespace llvm {
   procedure LLVMAddBBVectorizePass(PM: LLVMPassManagerRef); cdecl; external LLVMLibrary name 'LLVMAddBBVectorizePass';
 {$ENDIF}
 
-{$IFDEF LLVM_32}
   // See llvm::createLoopVectorizePass function.
   //void LLVMAddLoopVectorizePass(LLVMPassManagerRef PM);
 {$IFDEF LLVM_DYNAMIC_LINK}
   TLLVMAddLoopVectorizePass = procedure(PM: LLVMPassManagerRef); cdecl;
 {$ELSE}
   procedure LLVMAddLoopVectorizePass(PM: LLVMPassManagerRef); cdecl; external LLVMLibrary name 'LLVMAddLoopVectorizePass';
+{$ENDIF}
+
+{$IFDEF LLVM_33}
+  // See llvm::createSLPVectorizerPass function.
+  //void LLVMAddSLPVectorizePass(LLVMPassManagerRef PM);
+{$IFDEF LLVM_DYNAMIC_LINK}
+  TLLVMAddSLPVectorizePass = procedure(PM: LLVMPassManagerRef); cdecl;
+{$ELSE}
+  procedure LLVMAddSLPVectorizePass(PM: LLVMPassManagerRef); cdecl; external LLVMLibrary name 'LLVMAddSLPVectorizePass';
 {$ENDIF}
 {$ENDIF}
 
@@ -8745,6 +8921,9 @@ namespace llvm {
 var
 {$IFDEF LLVM_API_CORE}
   LLVMInitializeCore: TLLVMInitializeCore;
+{$IFDEF LLVM_33}
+  LLVMShutdown: TLLVMShutdown;
+{$ENDIF}
   LLVMDisposeMessage: TLLVMDisposeMessage;
   LLVMContextCreate: TLLVMContextCreate;
   LLVMGetGlobalContext: TLLVMGetGlobalContext;
@@ -8759,9 +8938,7 @@ var
   LLVMGetTarget: TLLVMGetTarget;
   LLVMSetTarget: TLLVMSetTarget;
   LLVMDumpModule: TLLVMDumpModule;
-{$IFDEF LLVM_32}
   LLVMPrintModuleToFile: TLLVMPrintModuleToFile;
-{$ENDIF}
   LLVMSetModuleInlineAsm: TLLVMSetModuleInlineAsm;
   LLVMGetModuleContext: TLLVMGetModuleContext;
   LLVMGetTypeByName: TLLVMGetTypeByName;
@@ -9020,6 +9197,12 @@ var
   LLVMSetThreadLocal: TLLVMSetThreadLocal;
   LLVMIsGlobalConstant: TLLVMIsGlobalConstant;
   LLVMSetGlobalConstant: TLLVMSetGlobalConstant;
+{$IFDEF LLVM_33}
+  LLVMGetThreadLocalMode: TLLVMGetThreadLocalMode;
+  LLVMSetThreadLocalMode: TLLVMSetThreadLocalMode;
+  LLVMIsExternallyInitialized: TLLVMIsExternallyInitialized;
+  LLVMSetExternallyInitialized: TLLVMSetExternallyInitialized;
+{$ENDIF}
   LLVMAddAlias: TLLVMAddAlias;
   LLVMDeleteFunction: TLLVMDeleteFunction;
   LLVMGetIntrinsicID: TLLVMGetIntrinsicID;
@@ -9028,6 +9211,9 @@ var
   LLVMGetGC: TLLVMGetGC;
   LLVMSetGC: TLLVMSetGC;
   LLVMAddFunctionAttr: TLLVMAddFunctionAttr;
+{$IFDEF LLVM_33}
+  LLVMAddTargetDependentFunctionAttr: TLLVMAddTargetDependentFunctionAttr;
+{$ENDIF}
   LLVMGetFunctionAttr: TLLVMGetFunctionAttr;
   LLVMRemoveFunctionAttr: TLLVMRemoveFunctionAttr;
   LLVMCountParams: TLLVMCountParams;
@@ -9047,10 +9233,8 @@ var
   LLVMMDNodeInContext: TLLVMMDNodeInContext;
   LLVMMDNode: TLLVMMDNode;
   LLVMGetMDString: TLLVMGetMDString;
-{$IFDEF LLVM_32}
   LLVMGetMDNodeNumOperands: TLLVMGetMDNodeNumOperands;
   LLVMGetMDNodeOperands: TLLVMGetMDNodeOperands;
-{$ENDIF}
   LLVMBasicBlockAsValue: TLLVMBasicBlockAsValue;
   LLVMValueIsBasicBlock: TLLVMValueIsBasicBlock;
   LLVMValueAsBasicBlock: TLLVMValueAsBasicBlock;
@@ -9200,10 +9384,16 @@ var
   LLVMBuildIsNull: TLLVMBuildIsNull;
   LLVMBuildIsNotNull: TLLVMBuildIsNotNull;
   LLVMBuildPtrDiff: TLLVMBuildPtrDiff;
+{$IFDEF LLVM_33}
+  LLVMBuildAtomicRMW: TLLVMBuildAtomicRMW;
+{$ENDIF}
   LLVMCreateModuleProviderForExistingModule: TLLVMCreateModuleProviderForExistingModule;
   LLVMDisposeModuleProvider: TLLVMDisposeModuleProvider;
   LLVMCreateMemoryBufferWithContentsOfFile: TLLVMCreateMemoryBufferWithContentsOfFile;
   LLVMCreateMemoryBufferWithSTDIN: TLLVMCreateMemoryBufferWithSTDIN;
+{$IFDEF LLVM_33}
+  LLVMCreateMemoryBufferWithMemoryRange: TLLVMCreateMemoryBufferWithMemoryRange;
+{$ENDIF}
   LLVMDisposeMemoryBuffer: TLLVMDisposeMemoryBuffer;
   LLVMGetGlobalPassRegistry: TLLVMGetGlobalPassRegistry;
   LLVMCreatePassManager: TLLVMCreatePassManager;
@@ -9214,6 +9404,11 @@ var
   LLVMRunFunctionPassManager: TLLVMRunFunctionPassManager;
   LLVMFinalizeFunctionPassManager: TLLVMFinalizeFunctionPassManager;
   LLVMDisposePassManager: TLLVMDisposePassManager;
+{$IFDEF LLVM_33}
+  LLVMStartMultithreaded: TLLVMStartMultithreaded;
+  LLVMStopMultithreaded: TLLVMStopMultithreaded;
+  LLVMIsMultithreaded: TLLVMIsMultithreaded;
+{$ENDIF}
 {$ENDIF}
 {$IFDEF LLVM_API_ANALYSIS}
   LLVMVerifyModule: TLLVMVerifyModule;
@@ -9238,6 +9433,9 @@ var
   LLVMInitializeCore_: TLLVMInitializeCore_;
   LLVMInitializeTransformUtils: TLLVMInitializeTransformUtils;
   LLVMInitializeScalarOpts: TLLVMInitializeScalarOpts;
+{$IFDEF LLVM_33}
+  LLVMInitializeObjCARCOpts: TLLVMInitializeObjCARCOpts;
+{$ENDIF}
   LLVMInitializeVectorization: TLLVMInitializeVectorization;
   LLVMInitializeInstCombine: TLLVMInitializeInstCombine;
   LLVMInitializeIPO: TLLVMInitializeIPO;
@@ -9270,13 +9468,9 @@ var
   LLVMCopyStringRepOfTargetData: TLLVMCopyStringRepOfTargetData;
   LLVMByteOrder: TLLVMByteOrder;
   LLVMPointerSize: TLLVMPointerSize;
-{$IFDEF LLVM_32}
   LLVMPointerSizeForAS: TLLVMPointerSizeForAS;
-{$ENDIF}
   LLVMIntPtrType: TLLVMIntPtrType;
-{$IFDEF LLVM_32}
   LLVMIntPtrTypeForAS: TLLVMIntPtrTypeForAS;
-{$ENDIF}
   LLVMSizeOfTypeInBits: TLLVMSizeOfTypeInBits;
   LLVMStoreSizeOfType: TLLVMStoreSizeOfType;
   LLVMABISizeOfType: TLLVMABISizeOfType;
@@ -9304,6 +9498,9 @@ var
   LLVMGetTargetMachineFeatureString: TLLVMGetTargetMachineFeatureString;
   LLVMGetTargetMachineData: TLLVMGetTargetMachineData;
   LLVMTargetMachineEmitToFile: TLLVMTargetMachineEmitToFile;
+{$IFDEF LLVM_33}
+  LLVMTargetMachineEmitToMemoryBuffer: TLLVMTargetMachineEmitToMemoryBuffer;
+{$ENDIF}
 {$ENDIF}
 {$IFDEF LLVM_API_OBJECT}
   LLVMCreateObjectFile: TLLVMCreateObjectFile;
@@ -9339,6 +9536,9 @@ var
 {$ENDIF}
 {$IFDEF LLVM_API_EXECUTIONENGINE}
   LLVMLinkInJIT: TLLVMLinkInJIT;
+{$IFDEF LLVM_33}
+  LLVMLinkInMCJIT: TLLVMLinkInMCJIT;
+{$ENDIF}
   LLVMLinkInInterpreter: TLLVMLinkInInterpreter;
   LLVMCreateGenericValueOfInt: TLLVMCreateGenericValueOfInt;
   LLVMCreateGenericValueOfPointer: TLLVMCreateGenericValueOfPointer;
@@ -9351,6 +9551,9 @@ var
   LLVMCreateExecutionEngineForModule: TLLVMCreateExecutionEngineForModule;
   LLVMCreateInterpreterForModule: TLLVMCreateInterpreterForModule;
   LLVMCreateJITCompilerForModule: TLLVMCreateJITCompilerForModule;
+{$IFDEF LLVM_33}
+  LLVMInitializeMCJITCompilerOptions: TLLVMInitializeMCJITCompilerOptions;
+{$ENDIF}
   LLVMCreateExecutionEngine: TLLVMCreateExecutionEngine;
   LLVMCreateInterpreter: TLLVMCreateInterpreter;
   LLVMCreateJITCompiler: TLLVMCreateJITCompiler;
@@ -9372,9 +9575,10 @@ var
 {$ENDIF}
 {$IFDEF LLVM_API_DISASSEMBLER}
   LLVMCreateDisasm: TLLVMCreateDisasm;
-{$IFDEF LLVM_32}
-  LLVMSetDisasmOptions: TLLVMSetDisasmOptions;
+{$IFDEF LLVM_33}
+  LLVMCreateDisasmCPU: TLLVMCreateDisasmCPU;
 {$ENDIF}
+  LLVMSetDisasmOptions: TLLVMSetDisasmOptions;
   LLVMDisasmDispose: TLLVMDisasmDispose;
   LLVMDisasmInstruction: TLLVMDisasmInstruction;
 {$ENDIF}
@@ -9408,6 +9612,9 @@ var
   lto_codegen_compile: Tlto_codegen_compile;
   lto_codegen_compile_to_file: Tlto_codegen_compile_to_file;
   lto_codegen_debug_options: Tlto_codegen_debug_options;
+{$IFDEF LLVM_33}
+  lto_initialize_disassembler: Tlto_initialize_disassembler;
+{$ENDIF}
 {$ENDIF}
 {$IFDEF LLVM_API_ENHANCEDDISASSEMBLY}
   EDGetDisassembler: TEDGetDisassembler;
@@ -9508,8 +9715,9 @@ var
 {$ENDIF}
 {$IFDEF LLVM_API_VECTORIZE}
   LLVMAddBBVectorizePass: TLLVMAddBBVectorizePass;
-{$IFDEF LLVM_32}
   LLVMAddLoopVectorizePass: TLLVMAddLoopVectorizePass;
+{$IFDEF LLVM_33}
+  LLVMAddSLPVectorizePass: TLLVMAddSLPVectorizePass;
 {$ENDIF}
 {$ENDIF}
 
@@ -9576,6 +9784,9 @@ begin
 {$IFDEF LLVM_API_CORE}
   LLVMTraceLog(';Core.h');
   @LLVMInitializeCore := BindLLVMProc('LLVMInitializeCore');
+{$IFDEF LLVM_33}
+  @LLVMShutdown := BindLLVMProc('LLVMShutdown');
+{$ENDIF}
   @LLVMDisposeMessage := BindLLVMProc('LLVMDisposeMessage');
   @LLVMContextCreate := BindLLVMProc('LLVMContextCreate');
   @LLVMGetGlobalContext := BindLLVMProc('LLVMGetGlobalContext');
@@ -9590,9 +9801,7 @@ begin
   @LLVMGetTarget := BindLLVMProc('LLVMGetTarget');
   @LLVMSetTarget := BindLLVMProc('LLVMSetTarget');
   @LLVMDumpModule := BindLLVMProc('LLVMDumpModule');
-{$IFDEF LLVM_32}
   @LLVMPrintModuleToFile := BindLLVMProc('LLVMPrintModuleToFile');
-{$ENDIF}
   @LLVMSetModuleInlineAsm := BindLLVMProc('LLVMSetModuleInlineAsm');
   @LLVMGetModuleContext := BindLLVMProc('LLVMGetModuleContext');
   @LLVMGetTypeByName := BindLLVMProc('LLVMGetTypeByName');
@@ -9851,6 +10060,12 @@ begin
   @LLVMSetThreadLocal := BindLLVMProc('LLVMSetThreadLocal');
   @LLVMIsGlobalConstant := BindLLVMProc('LLVMIsGlobalConstant');
   @LLVMSetGlobalConstant := BindLLVMProc('LLVMSetGlobalConstant');
+{$IFDEF LLVM_33}
+  @LLVMGetThreadLocalMode := BindLLVMProc('LLVMGetThreadLocalMode');
+  @LLVMSetThreadLocalMode := BindLLVMProc('LLVMSetThreadLocalMode');
+  @LLVMIsExternallyInitialized := BindLLVMProc('LLVMIsExternallyInitialized');
+  @LLVMSetExternallyInitialized := BindLLVMProc('LLVMSetExternallyInitialized');
+{$ENDIF}
   @LLVMAddAlias := BindLLVMProc('LLVMAddAlias');
   @LLVMDeleteFunction := BindLLVMProc('LLVMDeleteFunction');
   @LLVMGetIntrinsicID := BindLLVMProc('LLVMGetIntrinsicID');
@@ -9859,6 +10074,9 @@ begin
   @LLVMGetGC := BindLLVMProc('LLVMGetGC');
   @LLVMSetGC := BindLLVMProc('LLVMSetGC');
   @LLVMAddFunctionAttr := BindLLVMProc('LLVMAddFunctionAttr');
+{$IFDEF LLVM_33}
+  @LLVMAddTargetDependentFunctionAttr := BindLLVMProc('LLVMAddTargetDependentFunctionAttr');
+{$ENDIF}
   @LLVMGetFunctionAttr := BindLLVMProc('LLVMGetFunctionAttr');
   @LLVMRemoveFunctionAttr := BindLLVMProc('LLVMRemoveFunctionAttr');
   @LLVMCountParams := BindLLVMProc('LLVMCountParams');
@@ -9878,10 +10096,8 @@ begin
   @LLVMMDNodeInContext := BindLLVMProc('LLVMMDNodeInContext');
   @LLVMMDNode := BindLLVMProc('LLVMMDNode');
   @LLVMGetMDString := BindLLVMProc('LLVMGetMDString');
-{$IFDEF LLVM_32}
   @LLVMGetMDNodeNumOperands := BindLLVMProc('LLVMGetMDNodeNumOperands');
   @LLVMGetMDNodeOperands := BindLLVMProc('LLVMGetMDNodeOperands');
-{$ENDIF}
   @LLVMBasicBlockAsValue := BindLLVMProc('LLVMBasicBlockAsValue');
   @LLVMValueIsBasicBlock := BindLLVMProc('LLVMValueIsBasicBlock');
   @LLVMValueAsBasicBlock := BindLLVMProc('LLVMValueAsBasicBlock');
@@ -10031,10 +10247,16 @@ begin
   @LLVMBuildIsNull := BindLLVMProc('LLVMBuildIsNull');
   @LLVMBuildIsNotNull := BindLLVMProc('LLVMBuildIsNotNull');
   @LLVMBuildPtrDiff := BindLLVMProc('LLVMBuildPtrDiff');
+{$IFDEF LLVM_33}
+  @LLVMBuildAtomicRMW := BindLLVMProc('LLVMBuildAtomicRMW');
+{$ENDIF}
   @LLVMCreateModuleProviderForExistingModule := BindLLVMProc('LLVMCreateModuleProviderForExistingModule');
   @LLVMDisposeModuleProvider := BindLLVMProc('LLVMDisposeModuleProvider');
   @LLVMCreateMemoryBufferWithContentsOfFile := BindLLVMProc('LLVMCreateMemoryBufferWithContentsOfFile');
   @LLVMCreateMemoryBufferWithSTDIN := BindLLVMProc('LLVMCreateMemoryBufferWithSTDIN');
+{$IFDEF LLVM_33}
+  @LLVMCreateMemoryBufferWithMemoryRange := BindLLVMProc('LLVMCreateMemoryBufferWithMemoryRange');
+{$ENDIF}
   @LLVMDisposeMemoryBuffer := BindLLVMProc('LLVMDisposeMemoryBuffer');
   @LLVMGetGlobalPassRegistry := BindLLVMProc('LLVMGetGlobalPassRegistry');
   @LLVMCreatePassManager := BindLLVMProc('LLVMCreatePassManager');
@@ -10045,6 +10267,11 @@ begin
   @LLVMRunFunctionPassManager := BindLLVMProc('LLVMRunFunctionPassManager');
   @LLVMFinalizeFunctionPassManager := BindLLVMProc('LLVMFinalizeFunctionPassManager');
   @LLVMDisposePassManager := BindLLVMProc('LLVMDisposePassManager');
+{$IFDEF LLVM_33}
+  @LLVMStartMultithreaded := BindLLVMProc('LLVMStartMultithreaded');
+  @LLVMStopMultithreaded := BindLLVMProc('LLVMStopMultithreaded');
+  @LLVMIsMultithreaded := BindLLVMProc('LLVMIsMultithreaded');
+{$ENDIF}
   LLVMTraceLog('');
 {$ENDIF}
 {$IFDEF LLVM_API_ANALYSIS}
@@ -10077,6 +10304,9 @@ begin
   @LLVMInitializeCore_ := BindLLVMProc('LLVMInitializeCore');
   @LLVMInitializeTransformUtils := BindLLVMProc('LLVMInitializeTransformUtils');
   @LLVMInitializeScalarOpts := BindLLVMProc('LLVMInitializeScalarOpts');
+{$IFDEF LLVM_33}
+  @LLVMInitializeObjCARCOpts := BindLLVMProc('LLVMInitializeObjCARCOpts');
+{$ENDIF}
   @LLVMInitializeVectorization := BindLLVMProc('LLVMInitializeVectorization');
   @LLVMInitializeInstCombine := BindLLVMProc('LLVMInitializeInstCombine');
   @LLVMInitializeIPO := BindLLVMProc('LLVMInitializeIPO');
@@ -10115,13 +10345,9 @@ begin
   @LLVMCopyStringRepOfTargetData := BindLLVMProc('LLVMCopyStringRepOfTargetData');
   @LLVMByteOrder := BindLLVMProc('LLVMByteOrder');
   @LLVMPointerSize := BindLLVMProc('LLVMPointerSize');
-{$IFDEF LLVM_32}
   @LLVMPointerSizeForAS := BindLLVMProc('LLVMPointerSizeForAS');
-{$ENDIF}
   @LLVMIntPtrType := BindLLVMProc('LLVMIntPtrType');
-{$IFDEF LLVM_32}
   @LLVMIntPtrTypeForAS := BindLLVMProc('LLVMIntPtrTypeForAS');
-{$ENDIF}
   @LLVMSizeOfTypeInBits := BindLLVMProc('LLVMSizeOfTypeInBits');
   @LLVMStoreSizeOfType := BindLLVMProc('LLVMStoreSizeOfType');
   @LLVMABISizeOfType := BindLLVMProc('LLVMABISizeOfType');
@@ -10151,6 +10377,9 @@ begin
   @LLVMGetTargetMachineFeatureString := BindLLVMProc('LLVMGetTargetMachineFeatureString');
   @LLVMGetTargetMachineData := BindLLVMProc('LLVMGetTargetMachineData');
   @LLVMTargetMachineEmitToFile := BindLLVMProc('LLVMTargetMachineEmitToFile');
+{$IFDEF LLVM_33}
+  @LLVMTargetMachineEmitToMemoryBuffer := BindLLVMProc('LLVMTargetMachineEmitToMemoryBuffer');
+{$ENDIF}
   LLVMTraceLog('');
 {$ENDIF}
 {$IFDEF LLVM_API_OBJECT}
@@ -10190,6 +10419,9 @@ begin
 {$IFDEF LLVM_API_EXECUTIONENGINE}
   LLVMTraceLog(';ExecutionEngine.h');
   @LLVMLinkInJIT := BindLLVMProc('LLVMLinkInJIT');
+{$IFDEF LLVM_33}
+  @LLVMLinkInMCJIT := BindLLVMProc('LLVMLinkInMCJIT');
+{$ENDIF}
   @LLVMLinkInInterpreter := BindLLVMProc('LLVMLinkInInterpreter');
   @LLVMCreateGenericValueOfInt := BindLLVMProc('LLVMCreateGenericValueOfInt');
   @LLVMCreateGenericValueOfPointer := BindLLVMProc('LLVMCreateGenericValueOfPointer');
@@ -10202,6 +10434,9 @@ begin
   @LLVMCreateExecutionEngineForModule := BindLLVMProc('LLVMCreateExecutionEngineForModule');
   @LLVMCreateInterpreterForModule := BindLLVMProc('LLVMCreateInterpreterForModule');
   @LLVMCreateJITCompilerForModule := BindLLVMProc('LLVMCreateJITCompilerForModule');
+{$IFDEF LLVM_33}
+  @LLVMInitializeMCJITCompilerOptions := BindLLVMProc('LLVMInitializeMCJITCompilerOptions');
+{$ENDIF}
   @LLVMCreateExecutionEngine := BindLLVMProc('LLVMCreateExecutionEngine');
   @LLVMCreateInterpreter := BindLLVMProc('LLVMCreateInterpreter');
   @LLVMCreateJITCompiler := BindLLVMProc('LLVMCreateJITCompiler');
@@ -10225,9 +10460,10 @@ begin
 {$IFDEF LLVM_API_DISASSEMBLER}
   LLVMTraceLog('Disassembler.h');
   @LLVMCreateDisasm := BindLLVMProc('LLVMCreateDisasm');
-{$IFDEF LLVM_32}
-  @LLVMSetDisasmOptions := BindLLVMProc('LLVMSetDisasmOptions');
+{$IFDEF LLVM_33}
+  @LLVMCreateDisasmCPU := BindLLVMProc('LLVMCreateDisasmCPU');
 {$ENDIF}
+  @LLVMSetDisasmOptions := BindLLVMProc('LLVMSetDisasmOptions');
   @LLVMDisasmDispose := BindLLVMProc('LLVMDisasmDispose');
   @LLVMDisasmInstruction := BindLLVMProc('LLVMDisasmInstruction');
   LLVMTraceLog('');
@@ -10263,8 +10499,12 @@ begin
   @lto_codegen_compile := BindLLVMProc('lto_codegen_compile');
   @lto_codegen_compile_to_file := BindLLVMProc('lto_codegen_compile_to_file');
   @lto_codegen_debug_options := BindLLVMProc('lto_codegen_debug_options');
+{$IFDEF LLVM_33}
+  @lto_initialize_disassembler := BindLLVMProc('lto_initialize_disassembler');
+{$ENDIF}
   LLVMTraceLog('');
 {$ENDIF}
+{$IFDEF LLVM_32}
 {$IFDEF LLVM_API_ENHANCEDDISASSEMBLY}
   LLVMTraceLog(';EnhancedDisassembly.h');
   @EDGetDisassembler := BindLLVMProc('EDGetDisassembler');
@@ -10302,6 +10542,7 @@ begin
   @EDImmediateOperandValue := BindLLVMProc('EDImmediateOperandValue');
   @EDEvaluateOperand := BindLLVMProc('EDEvaluateOperand');
   LLVMTraceLog('');
+{$ENDIF}
 {$ENDIF}
 {$IFDEF LLVM_API_IPO}
   LLVMTraceLog(';Ipo.h');
@@ -10374,6 +10615,9 @@ begin
   LLVMTraceLog(';Vectorize.h');
   @LLVMAddBBVectorizePass := BindLLVMProc('LLVMAddBBVectorizePass');
   @LLVMAddLoopVectorizePass := BindLLVMProc('LLVMAddLoopVectorizePass');
+{$IFDEF LLVM_33}
+  @LLVMAddSLPVectorizePass := BindLLVMProc('LLVMAddSLPVectorizePass');
+{$ENDIF}
   LLVMTraceLog('');
 {$ENDIF}
   Result := BindResult;
